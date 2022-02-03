@@ -6,6 +6,12 @@
 #include <cmath>
 #include <cstring>
 
+// Helper function because C++'s modulo operator (%) can return negative results.
+inline int mod(int a, int b) {
+    int r = a % b;
+    return r < 0 ? r + b : r;
+}
+
 /*! \brief implement a circular buffer of type T
 */
 template <class T> 
@@ -49,12 +55,13 @@ public:
         return buffer[postInc(tail)];
     }
 
-    /*! return the value at the current read index
-    \return float the value from the read index
+    /*! return the value at the current read index (with optional offset)
+    \param iOffset (optional) offset from the read index
+    \return float the value from the offset index
     */
-    T get() const {
-        return buffer[tail];
-    }
+   T get(int iOffset = 0) const {
+       return buffer[mod(tail + iOffset, length)];
+   }
     
     /*! set buffer content and indices to 0
     \return void
@@ -77,7 +84,7 @@ public:
     \return void
     */
     void setWriteIdx(int iNewWriteIdx) {
-        head = iNewWriteIdx;
+        head = mod(iNewWriteIdx, length);
     }
 
     /*! return the current index for reading/get
@@ -92,14 +99,15 @@ public:
     \return void
     */
     void setReadIdx(int iNewReadIdx) {
-        tail = iNewReadIdx;
+        tail = mod(iNewReadIdx, length);
     }
 
     /*! returns the number of values currently buffered (note: 0 could also mean the buffer is full!)
     \return int
     */
     int getNumValuesInBuffer() const {
-        return head >= tail ? (head - tail) : (head + length - tail);
+        // If `tail > head`, we assume it's because `head` has wrapped around.
+        return tail > head ? (head + length - tail) : (head - tail);
     }
 
     /*! returns the length of the internal buffer
@@ -111,6 +119,8 @@ public:
 private:
     CRingBuffer();
     CRingBuffer(const CRingBuffer& that);
+
+    // Perform post-increment with wrapping.
     int postInc(int &index) {
        const int value = index++;
        if (index == length) index = 0;
