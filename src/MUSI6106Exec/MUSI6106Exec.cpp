@@ -1,7 +1,7 @@
 
 #include <iostream>
+#include <cstdlib>
 #include <ctime>
-#include <cassert>
 #include <string>
 
 #include "MUSI6106Config.h"
@@ -136,10 +136,35 @@ void testWeirdInputs() {
     expect(ringBuffer.getReadIdx() == 3);
 }
 
+// Test as a delay using a random signal.
+void testSignal() {
+    const int signalLength = 1024;
+    int signal[signalLength];
+    CRingBuffer<int> ringBuffer(256);
+
+    // Generate random signal.
+    srand(time(NULL));
+    for (int i = 0; i < signalLength; i++) {
+        signal[i] = rand();
+    }
+
+    // Feed signal to ring buffer.
+    // Wait for `delay` to start taking values out,
+    // and then ensure the signal is delayed as expected.
+    int delay = 100;
+    for (int i = 0; i < ringBuffer.getLength() * 4; i++) {
+        ringBuffer.putPostInc(signal[i]);
+        if (i >= delay) {
+            expect(ringBuffer.getPostInc() == signal[i - delay]);
+        }
+    }
+}
+
 int main(int argc, char* argv[]) {
     showClInfo();
 
-    auto tests = {testWrapping, testString, testAPI, testReset, testWeirdInputs};
+    // Run tests.
+    auto tests = {testWrapping, testString, testAPI, testReset, testWeirdInputs, testSignal};
     int passed = 0;
     for (int i = 0; i < tests.size(); i++) {
         try {
