@@ -11,16 +11,6 @@
 using std::cout;
 using std::endl;
 
-void showClInfo() {
-    cout << "MUSI6106 Assignment Executable" << endl;
-    cout << "(c) 2014-2022 by Alexander Lerch" << endl;
-    cout << endl;
-}
-
-void showUsage(char *progName) {
-    cout << "Usage: " << progName << " <input wav> <output wav> <delay in seconds> <feedforward/back gain>" << endl;
-}
-
 // Helper for testing.
 int expectIdx;
 
@@ -249,10 +239,23 @@ int runTests() {
     return passed != tests.size();
 }
 
+
+void showClInfo() {
+    cout << "MUSI6106 Assignment Executable" << endl;
+    cout << "(c) 2014-2022 by Alexander Lerch" << endl;
+    cout << endl;
+}
+
+void showUsage(const char *progName) {
+    cout << "Usage: " << progName << " <input wav> <output wav> [fir|iir] <delay in seconds> <feedforward/back gain>" << endl;
+}
+
 // main function
 int main(int argc, char *argv[]) {
     std::string inputPath, outputPath;  //!< file paths
     float delay, gain;
+    std::string fir = "fir", iir = "iir";
+    CCombFilterIf::CombFilterType_t type;
     static const int blockSize = 1024;
 
     clock_t time = 0;
@@ -267,15 +270,16 @@ int main(int argc, char *argv[]) {
     // parse command line arguments
     if (argc == 1) {
         return runTests();
-    } else if (argc < 5) {
+    } else if (argc < 5 || !(argv[3] == fir || argv[3] == iir)) {
         showUsage(argv[0]);
         return -1;
     } else {
         inputPath = argv[1];
         outputPath = argv[2];
+        type = argv[3] == fir ? CCombFilterIf::kCombFIR : CCombFilterIf::kCombIIR;
         try {
-            delay = std::stof(argv[3]);
-            gain = std::stof(argv[4]);
+            delay = std::stof(argv[4]);
+            gain = std::stof(argv[5]);
         } catch (const std::exception &exc) {
             cout << "error: " << exc.what() << endl;
             showUsage(argv[0]);
@@ -320,7 +324,7 @@ int main(int argc, char *argv[]) {
 
     CCombFilterIf *filter;
     CCombFilterIf::create(filter);
-    filter->init(CCombFilterIf::kCombFIR, delay, fileSpec.fSampleRateInHz, fileSpec.iNumChannels);
+    filter->init(type, delay, fileSpec.fSampleRateInHz, fileSpec.iNumChannels);
     filter->setParam(CCombFilterIf::kParamDelay, delay);
     filter->setParam(CCombFilterIf::kParamGain, gain);
 
