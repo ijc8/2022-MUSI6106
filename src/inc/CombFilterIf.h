@@ -1,6 +1,9 @@
 #if !defined(__CombFilterIf_hdr__)
 #define __CombFilterIf_hdr__
 
+#include <memory>
+#include <vector>
+
 #include "ErrorDef.h"
 
 class CCombFilterBase; // in case you intend to add an internal base class that the user doesn't see (not required)
@@ -102,12 +105,8 @@ protected:
 
 private:
     bool            m_bIsInitialized;   //!< internal bool to check whether the init function has been called
-    CCombFilterBase *m_pCCombFilter;    //!< handle of the comb filter
-
-    float           m_fSampleRate;      //!< audio sample rate in Hz
+    // Array of filters: one per channel.
+    std::vector<std::unique_ptr<CCombFilterBase>> filters;
 };
 
 #endif // #if !defined(__CombFilterIf_hdr__)
-
-
-

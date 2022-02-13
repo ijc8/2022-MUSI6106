@@ -15,9 +15,9 @@ inline int mod(int a, int b) {
 /*! \brief implement a circular buffer of type T
 */
 template <class T> 
-class CRingBuffer {
+class RingBuffer {
 public:
-    explicit CRingBuffer(int lengthInSamples) : length(lengthInSamples) {
+    explicit RingBuffer(int lengthInSamples) : length(lengthInSamples) {
         assert(lengthInSamples > 0);
 
         // allocate and init
@@ -25,7 +25,7 @@ public:
         reset();
     }
 
-    virtual ~CRingBuffer() {
+    virtual ~RingBuffer() {
         // free memory
         delete[] buffer;
     }
@@ -34,23 +34,15 @@ public:
     \param tNewValue the new value
     \return void
     */
-    void putPostInc(T tNewValue) {
+    void push(T tNewValue) {
         // NOTE: This does not perform error checking for the full buffer case.
         buffer[postInc(head)] = tNewValue;
-    }
-
-    /*! add a new value of type T to write index
-    \param tNewValue the new value
-    \return void
-    */
-    void put(T tNewValue) {
-        buffer[head] = tNewValue;
     }
     
     /*! return the value at the current read index and increment the read pointer
     \return float the value from the read index
     */
-    T getPostInc() {
+    T pop() {
         // NOTE: This does not perform error checking for the empty buffer case.
         return buffer[postInc(tail)];
     }
@@ -59,7 +51,7 @@ public:
     \param iOffset (optional) offset from the read index
     \return float the value from the offset index
     */
-   T get(int iOffset = 0) const {
+   T peek(int iOffset = 0) const {
        return buffer[mod(tail + iOffset, length)];
    }
     
@@ -117,8 +109,8 @@ public:
         return length;
     }
 private:
-    CRingBuffer();
-    CRingBuffer(const CRingBuffer& that);
+    RingBuffer();
+    RingBuffer(const RingBuffer& that);
 
     // Perform post-increment with wrapping.
     int postInc(int &index) {
