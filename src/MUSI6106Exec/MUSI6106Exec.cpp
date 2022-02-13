@@ -1,5 +1,6 @@
 
 #include <iostream>
+#include <cmath>
 #include <ctime>
 
 #include "MUSI6106Config.h"
@@ -20,6 +21,63 @@ void showUsage(char *progName) {
     cout << "Usage: " << progName << " <input wav> <output wav> <delay in seconds> <feedforward/back gain>" << endl;
 }
 
+// Helper for testing.
+int expectIdx;
+
+void startTest() {
+    expectIdx = 0;
+}
+
+void expect(bool b) {
+    if (!b) throw expectIdx;
+    expectIdx++;
+}
+
+// "Close enough" value for floating point expectations.
+const float epsilon = 1e-5;
+
+void testFIRInterference() {
+    // Feed in sine wave with period = delay * 2; should cancel with itself.
+    const float sampleRate = 44100;
+    const float delay = 0.1;
+    const float freq = 1 / (delay * 2);
+
+    CCombFilterIf *filter;
+    CCombFilterIf::create(filter);
+    filter->init(CCombFilterIf::kCombFIR, 0.1, sampleRate, 1);
+    filter->setParam(CCombFilterIf::kParamDelay, 0.1);
+    filter->setParam(CCombFilterIf::kParamGain, 1.0);
+
+    for (int i = 0; i < delay * sampleRate * 10; i++) {
+        float in = sinf(2*M_PI*freq*i/sampleRate);
+        float *ins = &in;
+        float out;
+        float *outs = &out;
+        filter->process(&ins, &outs, 1);
+        if (i >= delay * sampleRate) {
+            expect(fabsf(out) < epsilon);
+        }
+    }
+}
+
+int runTests() {
+    cout << "Running tests." << endl;
+    auto tests = {testFIRInterference};
+    int passed = 0;
+    for (int i = 0; i < tests.size(); i++) {
+        try {
+            startTest();
+            tests.begin()[i]();
+            cout << "Test " << i << " passed ✓" << endl;
+            passed++;
+        } catch (int &expectIdx) {
+            cout << "Test " << i << " failed ✗ (at expect " << expectIdx << ")" << endl;
+        }
+    }
+    cout << "Tests passed: " << passed << "/" << tests.size() << endl;
+    return passed != tests.size();
+}
+
 // main function
 int main(int argc, char *argv[]) {
     std::string inputPath, outputPath;  //!< file paths
@@ -37,8 +95,7 @@ int main(int argc, char *argv[]) {
 
     // parse command line arguments
     if (argc == 1) {
-        cout << "Testing mode (TODO!)" << endl;
-        return -1;
+        return runTests();
     } else if (argc < 5) {
         showUsage(argv[0]);
         return -1;
