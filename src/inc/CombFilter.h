@@ -8,16 +8,14 @@ class CCombFilterBase {
 public:
     CCombFilterBase(float maxDelay, float sampleRate);
     Error_t setGain(float gain);
-    Error_t setDelay(float delay);
+    virtual Error_t setDelay(float delay);
     float getGain();
     float getDelay();
-
     virtual Error_t process(float *input, float *output, int numFrames) = 0;
 protected:
+    float sampleRate;
     RingBuffer<float> delayline;
     float gain = 0.5;
-private:
-    float sampleRate;
 };
 
 class FIRFilter : public CCombFilterBase {
@@ -29,6 +27,7 @@ public:
 class IIRFilter : public CCombFilterBase {
 public:
     using CCombFilterBase::CCombFilterBase;
+    Error_t setDelay(float delay) override;
     Error_t process(float *input, float *output, int numFrames) override;
 };
 

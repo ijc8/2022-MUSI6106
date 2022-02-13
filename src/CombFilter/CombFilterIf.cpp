@@ -59,7 +59,7 @@ Error_t CCombFilterIf::destroy(CCombFilterIf*& pCCombFilter) {
 Error_t CCombFilterIf::init(CombFilterType_t eFilterType, float fMaxDelayLengthInS, float fSampleRateInHz, int iNumChannels) {
     // For simplicity, the underlying filter implementations are mono.
     // So, we allocate and initialize one filter instance per channel.
-    if (iNumChannels < 0) {
+    if (iNumChannels < 0 || fMaxDelayLengthInS < 1 / fSampleRateInHz) {
         return Error_t::kFunctionInvalidArgsError;
     } else if (eFilterType == CombFilterType_t::kCombFIR) {
         for (int i = 0; i < iNumChannels; i++) {
