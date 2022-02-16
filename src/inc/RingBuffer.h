@@ -12,6 +12,11 @@ inline int mod(int a, int b) {
     return r < 0 ? r + b : r;
 }
 
+inline float mod(float a, float b) {
+    float r = fmod(a, b);
+    return r < 0 ? r + b : r;
+}
+
 /*! \brief implement a circular buffer of type T
 */
 template <class T> 
@@ -56,13 +61,21 @@ public:
     }
 
     /*! return the value at the current read index (with optional offset)
+    \param iOffset (optional) offset from the read index
+    \return T the value from the offset index
+    */
+    T get(int iOffset) const {
+        return buffer[mod(tail + iOffset, length)];
+    }
+
+    /*! return the value at the current read index (with optional offset). performs linear interpolation.
     \param fOffset (optional) offset from the read index
     \return T the value from the offset index
     */
     T get(float fOffset = 0) const {
         // Compute fractional index between [0, length).
-        float fracIndex = mod(tail + fOffset, length);
-            // Get samples before and after fractional index.
+        float fracIndex = mod(tail + fOffset, (float)length);
+        // Get samples before and after fractional index.
         int index = fracIndex;
         float prevSample = buffer[index];
         float nextSample = buffer[(index + 1) % length];
@@ -70,7 +83,7 @@ public:
         float frac = fracIndex - index;
         return prevSample * (1 - frac) + nextSample * frac;
     }
-    
+
     /*! set buffer content and indices to 0
     \return void
     */

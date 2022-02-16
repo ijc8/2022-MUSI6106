@@ -160,11 +160,22 @@ void testSignal() {
     }
 }
 
+// Test fractional offset.
+void testFraction() {
+    CRingBuffer<float> ringBuffer(3);
+    ringBuffer.putPostInc(17);
+    ringBuffer.putPostInc(40);
+    ringBuffer.putPostInc(-5);
+    expect(ringBuffer.get(0.5f) == (17 + 40)/2.0);
+    expect(ringBuffer.get(1.5f) == (40 - 5)/2.0);
+    expect(ringBuffer.get(-0.5f) == (17 - 5)/2.0);
+}
+
 int main(int argc, char* argv[]) {
     showClInfo();
 
     // Run tests.
-    auto tests = {testWrapping, testString, testAPI, testReset, testWeirdInputs, testSignal};
+    auto tests = {testWrapping, testString, testAPI, testReset, testWeirdInputs, testSignal, testFraction};
     int passed = 0;
     for (int i = 0; i < tests.size(); i++) {
         try {
