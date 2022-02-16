@@ -56,12 +56,20 @@ public:
     }
 
     /*! return the value at the current read index (with optional offset)
-    \param iOffset (optional) offset from the read index
-    \return float the value from the offset index
+    \param fOffset (optional) offset from the read index
+    \return T the value from the offset index
     */
-   T get(int iOffset = 0) const {
-       return buffer[mod(tail + iOffset, length)];
-   }
+    T get(float fOffset = 0) const {
+        // Compute fractional index between [0, length).
+        float fracIndex = mod(tail + fOffset, length);
+            // Get samples before and after fractional index.
+        int index = fracIndex;
+        float prevSample = buffer[index];
+        float nextSample = buffer[(index + 1) % length];
+        // Compute weighted sum of samples before and after fractional index.
+        float frac = fracIndex - index;
+        return prevSample * (1 - frac) + nextSample * frac;
+    }
     
     /*! set buffer content and indices to 0
     \return void
