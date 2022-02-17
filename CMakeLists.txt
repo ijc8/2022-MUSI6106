@@ -7,6 +7,9 @@ project (MUSI6106
 # where to look for the default stuff...
 set (CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake.modules")
 
+# for people using MacOS/XCode/AppleClang.
+set (CMAKE_CXX_STANDARD 11)
+
 # platform detection
 include (SetPlatform)
 
