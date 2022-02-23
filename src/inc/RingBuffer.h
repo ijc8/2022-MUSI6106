@@ -20,9 +20,9 @@ inline float mod(float a, float b) {
 /*! \brief implement a circular buffer of type T
 */
 template <class T> 
-class CRingBuffer {
+class RingBuffer {
 public:
-    explicit CRingBuffer(int lengthInSamples) : length(lengthInSamples) {
+    explicit RingBuffer(int lengthInSamples) : length(lengthInSamples) {
         assert(lengthInSamples > 0);
 
         // allocate and init
@@ -30,7 +30,7 @@ public:
         reset();
     }
 
-    virtual ~CRingBuffer() {
+    virtual ~RingBuffer() {
         // free memory
         delete[] buffer;
     }
@@ -138,8 +138,8 @@ public:
         return length;
     }
 private:
-    CRingBuffer();
-    CRingBuffer(const CRingBuffer& that);
+    RingBuffer();
+    RingBuffer(const RingBuffer& that);
 
     // Perform post-increment with wrapping.
     int postInc(int &index) {
