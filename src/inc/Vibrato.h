@@ -22,6 +22,7 @@ private:
     float depth;
     LFO lfo;
     RingBuffer<float> delayLine;
+    RingBuffer<float> **mpp_delayLine;
 };
 
 #endif // __Vibrato_hdr__

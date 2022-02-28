@@ -13,7 +13,7 @@ void Vibrato::process(float **input, float **output, int numFrames) {
     int numChannels;
     for (int c = 0; c < numChannels; c++){
         for(int i = 0; i < numFrames; i++){
-            
+            //delayLine->put(input[c][i]);
         }
     }
 
