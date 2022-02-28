@@ -18,6 +18,8 @@ void LFO::setFrequency(float frequency) {
 
 float LFO::process() {
     float result = wavetable.get(index);
-    index += sampleRate / frequency * wavetable.getLength();
+    if(frequency != 0){
+        index += sampleRate / frequency * wavetable.getLength();
+    }
     return result;
 }
