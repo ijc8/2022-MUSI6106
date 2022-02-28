@@ -46,7 +46,7 @@ namespace audiofile_test {
             }
         }
 
-        virtual void TearDown()
+        virtual void TearDown() override
         {
             assert(m_ppfAudioData != 0);
             for (int i = 0; i < m_iNumChannels; i++)
