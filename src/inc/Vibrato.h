@@ -18,11 +18,11 @@ public:
     void process(float **input, float **output, int numFrames);
 
 private:
-    float sampleRate;
-    float depth;
+    float m_fsampleRate;
+    float m_fdepth;
     LFO lfo;
     RingBuffer<float> delayLine;
-    RingBuffer<float> **mpp_delayLine;
+//    RingBuffer<float> **mpp_delayLine;
 };
 
 #endif // __Vibrato_hdr__

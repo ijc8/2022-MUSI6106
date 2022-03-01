@@ -1,19 +1,28 @@
 #include "Vibrato.h"
+#include "LFO.h"
 
 Vibrato::Vibrato(float sampleRate, float maxDepth)
-: sampleRate(sampleRate), delayLine(ceil(sampleRate * maxDepth)), lfo(0), depth(0) {
+: m_fsampleRate(sampleRate), delayLine(ceil(sampleRate * maxDepth)), lfo(0), m_fdepth(0) {
+}
+
+void Vibrato::setFrequency(float frequency){
+    lfo.setFrequency(frequency);
+}
+
+void Vibrato::setDepth(float depth){
+    m_fdepth = depth;
 }
 
 void Vibrato::process(float **input, float **output, int numFrames) {
-    //Write the current sample to the delay line
-    //Read the delay sample
-    //Add delayed sample to current sample
-    //Increment both wavetable and modulated delay line appropriately
-        //Using LFO's output to modify the delay
+
     int numChannels;
+    float f_delayReadIdx;
+    
     for (int c = 0; c < numChannels; c++){
         for(int i = 0; i < numFrames; i++){
-            //delayLine->put(input[c][i]);
+            delayLine.putPostInc(input[c][i]);
+            f_delayReadIdx = lfo.process();
+            output[c][i] = input[c][i] + delayLine.get(f_delayReadIdx);
         }
     }
 

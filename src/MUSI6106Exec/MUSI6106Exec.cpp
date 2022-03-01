@@ -5,6 +5,11 @@
 #include "MUSI6106Config.h"
 
 #include "AudioFileIf.h"
+#include "RingBuffer.h"
+#include "Synthesis.h"
+#include "LFO.h"
+#include "Vibrato.h"
+
 using std::cout;
 using std::endl;
 
