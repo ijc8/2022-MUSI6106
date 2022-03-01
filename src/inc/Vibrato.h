@@ -10,7 +10,7 @@ public:
     Vibrato(float sampleRate, float maxDepth, int iNumChannels);
 
     void setFrequency(float frequency);
-    void setDepth(float depth);
+    Error_t setDepth(float depth);
 
     float getFrequency() const;
     float getDepth() const;

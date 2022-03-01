@@ -9,8 +9,12 @@ void Vibrato::setFrequency(float frequency){
     lfo.setFrequency(frequency);
 }
 
-void Vibrato::setDepth(float depth){
+Error_t Vibrato::setDepth(float depth){
+    if (depth > delayLine.getLength() / m_fsampleRate){
+        return Error_t::kFunctionInvalidArgsError;
+    }
     m_fdepth = depth;
+    return Error_t::kNoError;
 }
 
 void Vibrato::process(float **input, float **output, int numFrames) {
