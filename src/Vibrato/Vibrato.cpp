@@ -19,11 +19,12 @@ void Vibrato::process(float **input, float **output, int numFrames) {
     
     for (int c = 0; c < m_iNumChannels; c++){
         delayLine.reset();
+        lfo.reset();
         for(int i = 0; i < numFrames; i++){
             delayLine.putPostInc(input[c][i]);
             f_delayReadIdx = lfo.process();
             output[c][i] = input[c][i] + delayLine.get(f_delayReadIdx);
         }
     }
-
+    
 }

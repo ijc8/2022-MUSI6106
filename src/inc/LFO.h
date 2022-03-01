@@ -8,6 +8,7 @@ public:
     LFO(float sampleRate, int resolution = 4096);
     float getFrequency() const;
     void setFrequency(float frequency);
+    void reset();
     float process();
 private:
     float sampleRate;

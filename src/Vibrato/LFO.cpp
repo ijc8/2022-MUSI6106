@@ -16,6 +16,10 @@ void LFO::setFrequency(float frequency) {
     this->frequency = frequency;
 }
 
+void LFO::reset(){
+    this->wavetable.reset();
+}
+
 float LFO::process() {
     float result = wavetable.get(index);
     if(frequency != 0){
