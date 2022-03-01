@@ -7,7 +7,7 @@
 
 class Vibrato {
 public:
-    Vibrato(float sampleRate, float maxDepth);
+    Vibrato(float sampleRate, float maxDepth, int iNumChannels);
 
     void setFrequency(float frequency);
     void setDepth(float depth);
@@ -20,6 +20,7 @@ public:
 private:
     float m_fsampleRate;
     float m_fdepth;
+    int m_iNumChannels;
     LFO lfo;
     RingBuffer<float> delayLine;
 //    RingBuffer<float> **mpp_delayLine;
