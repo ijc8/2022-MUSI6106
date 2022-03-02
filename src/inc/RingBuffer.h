@@ -22,7 +22,6 @@ inline float mod(float a, float b) {
 template <class T> 
 class RingBuffer {
 public:
-    RingBuffer(RingBuffer&&) = default;
     explicit RingBuffer(int lengthInSamples) : length(lengthInSamples) {
         assert(lengthInSamples > 0);
 
@@ -42,7 +41,8 @@ public:
     */
     void putPostInc(T tNewValue) {
         // NOTE: This does not perform error checking for the full buffer case.
-        buffer[postInc(head)] = tNewValue;
+        int index = postInc(head);
+        buffer[index] = tNewValue;
     }
 
     /*! add a new value of type T to write index

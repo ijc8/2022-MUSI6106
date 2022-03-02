@@ -1,6 +1,7 @@
 #if !defined(__Vibrato_hdr__)
 #define __Vibrato_hdr__
 
+#include <memory>
 #include <vector>
 
 #include "LFO.h"
@@ -26,7 +27,7 @@ private:
     float m_fdepth;
     int m_iNumChannels;
     LFO lfo;
-    std::vector<RingBuffer<float>> delayLines;
+    std::vector<std::unique_ptr<RingBuffer<float>>> delayLines;
 };
 
 #endif // __Vibrato_hdr__
