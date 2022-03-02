@@ -34,6 +34,8 @@ public:
         // free memory
         delete[] buffer;
     }
+    RingBuffer();
+    RingBuffer(const RingBuffer& that);
 
     /*! add a new value of type T to write index and increment write index
     \param tNewValue the new value
@@ -138,8 +140,8 @@ public:
         return length;
     }
 private:
-    RingBuffer();
-    RingBuffer(const RingBuffer& that);
+//    RingBuffer();
+//    RingBuffer(const RingBuffer& that);
 
     // Perform post-increment with wrapping.
     int postInc(int &index) {
