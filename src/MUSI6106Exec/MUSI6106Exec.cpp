@@ -30,7 +30,8 @@ int main(int argc, char* argv[])
 
     clock_t time = 0;
 
-    float **ppfAudioData = 0;
+    float **ppfInputAudioData = 0;
+    float **ppfOutputAudioData = 0;
 
     CAudioFileIf *phInputAudioFile = 0;
     CAudioFileIf *phOutputAudioFile = 0;
@@ -89,17 +90,21 @@ int main(int argc, char* argv[])
     hVibrato.setDepth(f_vdepth);
     
     // allocate memory
-    ppfAudioData = new float*[stFileSpec.iNumChannels];
-    for (int i = 0; i < stFileSpec.iNumChannels; i++)
-        ppfAudioData[i] = new float[kBlockSize];
+    ppfInputAudioData = new float*[stFileSpec.iNumChannels];
+    ppfOutputAudioData = new float*[stFileSpec.iNumChannels];
+    for (int i = 0; i < stFileSpec.iNumChannels; i++){
+        ppfInputAudioData[i] = new float[kBlockSize];
+        ppfOutputAudioData[i] = new float[kBlockSize];
+    }
+        
 
-    if (ppfAudioData == 0)
+    if (ppfInputAudioData == 0)
     {
         CAudioFileIf::destroy(phInputAudioFile);
         CAudioFileIf::destroy(phOutputAudioFile);
         return -1;
     }
-    if (ppfAudioData[0] == 0)
+    if (ppfInputAudioData[0] == 0)
     {
         CAudioFileIf::destroy(phInputAudioFile);
         CAudioFileIf::destroy(phOutputAudioFile);
@@ -113,9 +118,9 @@ int main(int argc, char* argv[])
            long long iNumFrames = kBlockSize;
 
            // read data (iNumOfFrames might be updated!)
-           phInputAudioFile->readData(ppfAudioData, iNumFrames);
-           hVibrato.process(ppfAudioData, ppfAudioData, iNumFrames);
-           phOutputAudioFile->writeData(ppfAudioData, iNumFrames);
+           phInputAudioFile->readData(ppfInputAudioData, iNumFrames);
+           hVibrato.process(ppfInputAudioData, ppfOutputAudioData, iNumFrames);
+           phOutputAudioFile->writeData(ppfOutputAudioData, iNumFrames);
 
            cout << "\r" << "reading and writing";
        }
@@ -126,10 +131,14 @@ int main(int argc, char* argv[])
     CAudioFileIf::destroy(phInputAudioFile);
     CAudioFileIf::destroy(phOutputAudioFile);
 
-    for (int i = 0; i < stFileSpec.iNumChannels; i++)
-        delete[] ppfAudioData[i];
-    delete[] ppfAudioData;
-    ppfAudioData = 0;
+    for (int i = 0; i < stFileSpec.iNumChannels; i++){
+        delete[] ppfInputAudioData[i];
+        delete[] ppfOutputAudioData[i];
+    }
+    delete[] ppfInputAudioData;
+    delete[] ppfOutputAudioData;
+    ppfInputAudioData = 0;
+    ppfOutputAudioData = 0;
 
     // all done
     return 0;
