@@ -22,6 +22,7 @@ inline float mod(float a, float b) {
 template <class T> 
 class RingBuffer {
 public:
+    RingBuffer(RingBuffer&&) = default;
     explicit RingBuffer(int lengthInSamples) : length(lengthInSamples) {
         assert(lengthInSamples > 0);
 
@@ -34,8 +35,6 @@ public:
         // free memory
         delete[] buffer;
     }
-    RingBuffer();
-    RingBuffer(const RingBuffer& that);
 
     /*! add a new value of type T to write index and increment write index
     \param tNewValue the new value
@@ -140,8 +139,8 @@ public:
         return length;
     }
 private:
-//    RingBuffer();
-//    RingBuffer(const RingBuffer& that);
+    RingBuffer();
+    RingBuffer(const RingBuffer& that);
 
     // Perform post-increment with wrapping.
     int postInc(int &index) {

@@ -1,9 +1,13 @@
 #if !defined(__Vibrato_hdr__)
 #define __Vibrato_hdr__
 
+#include <vector>
+
 #include "LFO.h"
 #include "RingBuffer.h"
 #include "ErrorDef.h"
+
+// TODO: Explain design here.
 
 class Vibrato {
 public:
@@ -22,8 +26,7 @@ private:
     float m_fdepth;
     int m_iNumChannels;
     LFO lfo;
-    RingBuffer<float> delayLine;
-//    RingBuffer<float> **mpp_delayLine;
+    std::vector<RingBuffer<float>> delayLines;
 };
 
 #endif // __Vibrato_hdr__

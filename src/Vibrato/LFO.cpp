@@ -12,7 +12,7 @@ float LFO::getFrequency() const {
     return frequency;
 }
 
-void LFO::setAmplitude(float amplitude){
+void LFO::setAmplitude(float amplitude) {
     this->amplitude = amplitude;
 }
 
@@ -26,8 +26,6 @@ void LFO::reset(){
 
 float LFO::process() {
     float result = wavetable.get(index);
-    if(frequency != 0){
-        index += sampleRate / frequency * wavetable.getLength();
-    }
-    return result;
+    index += frequency / sampleRate * wavetable.getLength();
+    return result * amplitude;
 }
