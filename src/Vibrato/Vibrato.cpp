@@ -22,7 +22,13 @@ Error_t Vibrato::setDepth(float depth) {
     return Error_t::kNoError;
 }
 
-// TODO: getFrequency(), getDepth()
+float Vibrato::getFrequency() const {
+    return lfo.getFrequency();
+}
+
+float Vibrato::getDepth() const {
+    return lfo.getAmplitude() / sampleRate;
+}
 
 void Vibrato::process(float **input, float **output, int numFrames) {
     for (int c = 0; c < delayLines.size(); c++) {
