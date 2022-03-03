@@ -25,7 +25,7 @@ public:
 private:
     float sampleRate;
     LFO lfo;
-    std::vector<std::unique_ptr<RingBuffer<float>>> delayLines;
+    std::vector<std::unique_ptr<RingBuffer<float> > > delayLines;
 };
 
 #endif // __Vibrato_hdr__
