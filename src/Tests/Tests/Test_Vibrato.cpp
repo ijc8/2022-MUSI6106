@@ -24,63 +24,74 @@ namespace vibrato_test {
 
     void CHECK_DC_INPUT(){}
 
-    class RingBuffer: public testing::Test {
+    class RingBufferTest: public testing::Test {
     protected:
         void SetUp() override {};
         virtual void TearDown() {};
         
     };
 
-    // Test 0: Int and float mod functions work as expected
-    TEST_F(RingBuffer, Mod) {
-        EXPECT_TRUE(false);
+    // Test that ring buffer is a ring (wraps after more than `length` elements have entered).
+    TEST_F(RingBufferTest, Wrapping) {
+        const int length = 17;
+        RingBuffer<float> ringBuffer(length);
+
+        for (int i = 0; i < 5; i++) {
+            ringBuffer.putPostInc(1.F*i);
+        }
+
+        for (int i = 5; i < length + 13; i++) {
+            EXPECT_EQ(ringBuffer.getNumValuesInBuffer(), 5);
+            EXPECT_EQ(ringBuffer.getPostInc(), i - 5);
+            ringBuffer.putPostInc(1.F*i);
+        }
     }
     // Test 1: Linear Interpolation works as expected
     // Test 1a: What happens when you try to wrap back around?
-    TEST_F(RingBuffer, Interpolate) {
+    TEST_F(RingBufferTest, Interpolate) {
         EXPECT_TRUE(false);
     }
 
     // Test 2: Read/Write negative index values or values greater than the buffer length
-    TEST_F(RingBuffer, CheckBounds) {
+    TEST_F(RingBufferTest, CheckBounds) {
         EXPECT_TRUE(false);
     }
 
     // Test 3: Writing a fractional index value
-    TEST_F(RingBuffer, WriteFloatIndex) {
+    TEST_F(RingBufferTest, WriteFloatIndex) {
         EXPECT_TRUE(false);
     }
 
     // Test 4a: Writing when the buffer is full
     // Test 4b: Reading when the buffer is empty
-    TEST_F(RingBuffer, EmptyFull) {
+    TEST_F(RingBufferTest, EmptyFull) {
         EXPECT_TRUE(false);
     }
 
-    class Vibrato: public testing::Test {
+    class VibratoTest: public testing::Test {
     protected:
         void SetUp() override {};
         virtual void TearDown() {};
     };
 
-    TEST_F(Vibrato, CheckZeroModulation) {
+    TEST_F(VibratoTest, CheckZeroModulation) {
         EXPECT_TRUE(false);
     }
 
-    TEST_F(Vibrato, CheckDCInput) {
+    TEST_F(VibratoTest, CheckDCInput) {
         EXPECT_TRUE(false);
     }
 
-    TEST_F(Vibrato, VaryingBlockSize) {
+    TEST_F(VibratoTest, VaryingBlockSize) {
         int blockSizes[] = {123, 234, 3456, 45678};
         EXPECT_TRUE(false);
     }
 
-    TEST_F(Vibrato, ZeroInput) {
+    TEST_F(VibratoTest, ZeroInput) {
         EXPECT_TRUE(false);
     }
 
-    TEST_F(Vibrato, CustomTest) {
+    TEST_F(VibratoTest, CustomTest) {
         EXPECT_TRUE(false);
     }
 }
