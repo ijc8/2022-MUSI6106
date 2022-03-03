@@ -27,53 +27,52 @@ namespace vibrato_test {
 
     void CHECK_DC_INPUT(){}
 
-    class TRingBuffer : public  testing::Test{
+    class RingBuffer : public  testing::Test{
     protected:
-        void SetUp();
-        void TearDown();
+        void SetUp() override {};
+        virtual void TearDown() {};
         
     };
 
-    class TVibrato : public  testing::Test{
+    class Vibrato : public  testing::Test{
     protected:
-        void SetUp();
-        void TearDown();
-
+        void SetUp() override {};
+        virtual void TearDown() {};
     };
 
     //Test 0: Int and float mod functions work as expected
-    TEST_F(TRingBuffer, Mod){
+    TEST_F(RingBuffer, Mod){
 
     }
     //Test 1: Linear Interpolation works as expected
         //Test 1a: What happens when you try to wrap back around?
-    TEST_F(TRingBuffer, Interpolate){
+    TEST_F(RingBuffer, Interpolate){
 
     }
 
     //Test 2: Read/Write negative index values or values greater than the buffer length
-    TEST_F(TRingBuffer, CheckBounds){
+    TEST_F(RingBuffer, CheckBounds){
 
     }
 
     //Test 3: Writing a fractional index value
-    TEST_F(TRingBuffer, WriteFloatIndex){
+    TEST_F(RingBuffer, WriteFloatIndex){
 
     }
 
     //Test 4a: Writing when the buffer is full
     //Test 4b: Reading when the buffer is empty
-    TEST_F(TRingBuffer, EmptyFull){
+    TEST_F(RingBuffer, EmptyFull){
 
     }
 
-    TEST_F(TVibrato, CheckZeroModulation){}
-    TEST_F(TVibrato, CheckDCInput){}
-    TEST_F(TVibrato, VaryingBlockSize){
+    TEST_F(Vibrato, CheckZeroModulation){}
+    TEST_F(Vibrato, CheckDCInput){}
+    TEST_F(Vibrato, VaryingBlockSize){
         int blockSizes[] = {123, 234, 3456, 45678};
     }
-    TEST_F(TVibrato, ZeroInput){}
-    TEST_F(TVibrato, CustomTest){}
+    TEST_F(Vibrato, ZeroInput){}
+    TEST_F(Vibrato, CustomTest){}
 
 
 }
