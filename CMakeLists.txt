@@ -2,6 +2,9 @@ cmake_minimum_required (VERSION 3.0)
 project (MUSI6106
         VERSION 0.0.0.1)
 
+# for people using MacOS/AppleClang.
+set (CMAKE_CXX_STANDARD 11)
+
 #######################################################################################################
 ## includes
 # where to look for the default stuff...
@@ -82,4 +85,3 @@ if(WITH_DOXYGENTARGET)
 			COMMAND ${DOXYGEN_EXECUTABLE} ${PROJECT_BINARY_DIR}/docs/doxy.config
 			SOURCES ${PROJECT_BINARY_DIR}/docs/doxy.config)
 endif(WITH_DOXYGENTARGET)
-
