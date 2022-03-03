@@ -24,6 +24,7 @@ public:
 
 private:
     float sampleRate;
+    float maxDepth;
     LFO lfo;
     std::vector<std::unique_ptr<RingBuffer<float>>> delayLines;
 };
