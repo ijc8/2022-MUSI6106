@@ -28,11 +28,12 @@ Error_t Vibrato::setDepth(float depth) {
 
 void Vibrato::process(float **input, float **output, int numFrames) {
     const float baseDelay = maxDepth * sampleRate + 1;
-    for (int c = 0; c < delayLines.size(); c++) {
-        RingBuffer<float> &delayLine = *delayLines[c];
-        for(int i = 0; i < numFrames; i++) {
+    for (int i = 0; i < numFrames; i++) {
+        const float mod = lfo.process();
+        for (int c = 0; c < delayLines.size(); c++) {
+            RingBuffer<float> &delayLine = *delayLines[c];
             delayLine.putPostInc(input[c][i]);
-            const float offset = baseDelay + lfo.process();
+            const float offset = baseDelay + mod;
             assert(offset > 0 && offset <= delayLine.getLength() - 1);
             const float tap = delayLine.getWriteIdx() - offset;
             output[c][i] = delayLine.get(tap);

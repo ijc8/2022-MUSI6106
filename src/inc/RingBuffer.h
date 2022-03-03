@@ -41,8 +41,7 @@ public:
     */
     void putPostInc(T tNewValue) {
         // NOTE: This does not perform error checking for the full buffer case.
-        int index = postInc(head);
-        buffer[index] = tNewValue;
+        buffer[postInc(head)] = tNewValue;
     }
 
     /*! add a new value of type T to write index

@@ -38,11 +38,11 @@ int main(int argc, char* argv[]) {
     CAudioFileIf *phOutputAudioFile = 0;
     CAudioFileIf::FileSpec_t stFileSpec;
     
-    //variables related to the vibrato
+    // variables related to the vibrato
     float frequency;
     float depth;
     
-    //check number of arguments
+    // check number of arguments
     if (argc < 5) {
         cout << "Usage: " << argv[0] << " <input file> <output file> <frequency in Hz> <depth in seconds>" << endl;
         return 0;
@@ -73,13 +73,12 @@ int main(int argc, char* argv[]) {
         return -1;
     }
     
-    //create vibrato object
+    // create vibrato object
     Vibrato vibrato(stFileSpec.fSampleRateInHz, depth, stFileSpec.iNumChannels);
     vibrato.setFrequency(frequency);
     vibrato.setDepth(depth);
 
     // allocate memory
-    // TODO: Just use input buffers for output.
     ppfInputAudioData = new float*[stFileSpec.iNumChannels];
     ppfOutputAudioData = new float*[stFileSpec.iNumChannels];
     for (int i = 0; i < stFileSpec.iNumChannels; i++) {
@@ -87,11 +86,8 @@ int main(int argc, char* argv[]) {
         ppfOutputAudioData[i] = new float[kBlockSize];
     }
 
-    //meat and potatoes code
     while (!phInputAudioFile->isEof()) {
-        // set block length variable
         long long iNumFrames = kBlockSize;
-
         // read data (iNumOfFrames might be updated!)
         phInputAudioFile->readData(ppfInputAudioData, iNumFrames);
         vibrato.process(ppfInputAudioData, ppfOutputAudioData, iNumFrames);
@@ -106,15 +102,12 @@ int main(int argc, char* argv[]) {
     CAudioFileIf::destroy(phInputAudioFile);
     CAudioFileIf::destroy(phOutputAudioFile);
 
-    for (int i = 0; i < stFileSpec.iNumChannels; i++){
+    for (int i = 0; i < stFileSpec.iNumChannels; i++) {
         delete[] ppfInputAudioData[i];
         delete[] ppfOutputAudioData[i];
     }
     delete[] ppfInputAudioData;
     delete[] ppfOutputAudioData;
 
-    // all done
     return 0;
-    
-
 }
