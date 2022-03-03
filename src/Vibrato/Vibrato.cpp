@@ -7,7 +7,7 @@ Vibrato::Vibrato(float sampleRate, float maxDepth, int numChannels = 1)
 : sampleRate(sampleRate), lfo(sampleRate), maxDepth(maxDepth) {
     assert(numChannels > 0);
     for (int i = 0; i < numChannels; i++) {
-        int length = (int)roundf(sampleRate * maxDepth * 2) + 2;
+        int length = (int)ceilf(sampleRate * maxDepth * 2) + 2;
         delayLines.emplace_back(new RingBuffer<float>(length));
     }
 }
