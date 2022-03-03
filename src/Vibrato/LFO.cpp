@@ -12,6 +12,10 @@ float LFO::getFrequency() const {
     return frequency;
 }
 
+float LFO::getAmplitude() const {
+    return amplitude;
+}
+
 void LFO::setAmplitude(float amplitude) {
     this->amplitude = amplitude;
 }
