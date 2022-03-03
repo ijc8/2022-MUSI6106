@@ -39,18 +39,18 @@ int main(int argc, char* argv[]) {
     CAudioFileIf::FileSpec_t stFileSpec;
     
     //variables related to the vibrato
-    float f_vfrequency;
-    float f_vdepth;
+    float frequency;
+    float depth;
     
     //check number of arguments
-    if (argc < 4) {
-        cout << "Usage: " << argv[0] << " <frequency in Hz> <depth in seconds>" << endl;
+    if (argc < 5) {
+        cout << "Usage: " << argv[0] << " <input file> <output file> <frequency in Hz> <depth in seconds>" << endl;
         return 0;
     } else {
         sInputFilePath = argv[1];
-        sOutputFilePath = sInputFilePath + "_vibrato.wav";
-        f_vfrequency = atof(argv[2]);
-        f_vdepth = atof(argv[3]);
+        sOutputFilePath = argv[2];
+        frequency = atof(argv[3]);
+        depth = atof(argv[4]);
     }
     
 
@@ -74,9 +74,9 @@ int main(int argc, char* argv[]) {
     }
     
     //create vibrato object
-    Vibrato hVibrato(stFileSpec.fSampleRateInHz, f_vdepth+1, stFileSpec.iNumChannels);
-    hVibrato.setFrequency(f_vfrequency);
-    hVibrato.setDepth(f_vdepth);
+    Vibrato vibrato(stFileSpec.fSampleRateInHz, depth, stFileSpec.iNumChannels);
+    vibrato.setFrequency(frequency);
+    vibrato.setDepth(depth);
 
     // allocate memory
     // TODO: Just use input buffers for output.
@@ -94,7 +94,7 @@ int main(int argc, char* argv[]) {
 
         // read data (iNumOfFrames might be updated!)
         phInputAudioFile->readData(ppfInputAudioData, iNumFrames);
-        hVibrato.process(ppfInputAudioData, ppfOutputAudioData, iNumFrames);
+        vibrato.process(ppfInputAudioData, ppfOutputAudioData, iNumFrames);
         phOutputAudioFile->writeData(ppfOutputAudioData, iNumFrames);
 
         cout << "\r" << "reading and writing";
