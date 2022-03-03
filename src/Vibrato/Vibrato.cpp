@@ -25,12 +25,13 @@ Error_t Vibrato::setDepth(float depth) {
 // TODO: getFrequency(), getDepth()
 
 void Vibrato::process(float **input, float **output, int numFrames) {
+    const float baseDelay = delayLines[0]->getLength() / 2;
     for (int c = 0; c < delayLines.size(); c++) {
         RingBuffer<float> &delayLine = *delayLines[c];
         for(int i = 0; i < numFrames; i++) {
             delayLine.putPostInc(input[c][i]);
-            const float baseDelay = delayLine.getWriteIdx() - delayLine.getLength() / 2;
-            output[c][i] = delayLine.get(baseDelay + lfo.process());
+            const float tap = delayLine.getWriteIdx() - (baseDelay + lfo.process());
+            output[c][i] = delayLine.get(tap);
         }
     }
 }
