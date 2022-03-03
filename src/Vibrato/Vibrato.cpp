@@ -17,7 +17,7 @@ void Vibrato::setFrequency(float frequency) {
 }
 
 Error_t Vibrato::setDepth(float depth) {
-    if (depth > maxDepth) {
+    if (depth < -maxDepth || depth > maxDepth) {
         return Error_t::kFunctionInvalidArgsError;
     }
     lfo.setAmplitude(depth * sampleRate);

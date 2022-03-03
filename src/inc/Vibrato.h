@@ -8,7 +8,11 @@
 #include "RingBuffer.h"
 #include "ErrorDef.h"
 
-// TODO: Explain design here.
+// Our design consists of a Vibrato class that supports multichannel,
+// with as many delay lines as channels, controlled by a single LFO.
+// We provide methods to get and set parameters directly,
+// which is more direct and avoids a potential source of error (invalid parameter type).
+// All parameter values are expressed in Hz or seconds, as appropriate.
 
 class Vibrato {
 public:
