@@ -12,7 +12,7 @@
 
 class Vibrato {
 public:
-    Vibrato(float sampleRate, float maxDepth, int iNumChannels);
+    Vibrato(float sampleRate, float maxDepth, int numChannels);
 
     void setFrequency(float frequency);
     Error_t setDepth(float depth);
@@ -23,9 +23,7 @@ public:
     void process(float **input, float **output, int numFrames);
 
 private:
-    float m_fsampleRate;
-    float m_fdepth;
-    int m_iNumChannels;
+    float sampleRate;
     LFO lfo;
     std::vector<std::unique_ptr<RingBuffer<float>>> delayLines;
 };
