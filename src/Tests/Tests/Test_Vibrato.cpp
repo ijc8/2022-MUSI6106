@@ -46,26 +46,131 @@ namespace vibrato_test {
             ringBuffer.putPostInc(1.F*i);
         }
     }
-    // Test 1: Linear Interpolation works as expected
-    // Test 1a: What happens when you try to wrap back around?
-    TEST_F(RingBufferTest, Interpolate) {
-        EXPECT_TRUE(false);
+
+    // Test for generality; does this handle a more complex, non-numeric type correctly?
+    TEST_F(RingBufferTest, String) {
+        RingBuffer<std::string> stringBuffer(3);
+        stringBuffer.putPostInc("hello");
+        stringBuffer.putPostInc("world");
+        stringBuffer.putPostInc("!!!");
+        EXPECT_EQ(stringBuffer.getPostInc(), "hello");
+        EXPECT_EQ(stringBuffer.getPostInc(), "world");
+        EXPECT_EQ(stringBuffer.getPostInc(), "!!!");
     }
 
-    // Test 2: Read/Write negative index values or values greater than the buffer length
-    TEST_F(RingBufferTest, CheckBounds) {
-        EXPECT_TRUE(false);
+    // Basic test of all API functions.
+    TEST_F(RingBufferTest, API) {
+        const int length = 3;
+        RingBuffer<int> ringBuffer(length);
+
+        EXPECT_EQ(ringBuffer.getLength(), length);
+
+        ringBuffer.put(3);
+        EXPECT_EQ(ringBuffer.get(), 3);
+
+        ringBuffer.setWriteIdx(1);
+        EXPECT_EQ(ringBuffer.getWriteIdx(), 1);
+
+        ringBuffer.putPostInc(17);
+        EXPECT_EQ(ringBuffer.getWriteIdx(), 2);
+
+        EXPECT_EQ(ringBuffer.getReadIdx(), 0);
+        EXPECT_EQ(ringBuffer.get(1), 17);
+        EXPECT_EQ(ringBuffer.getPostInc(), 3);
+        EXPECT_EQ(ringBuffer.getReadIdx(), 1);
+
+        EXPECT_EQ(ringBuffer.getNumValuesInBuffer(), 1);
+        ringBuffer.putPostInc(42);
+        EXPECT_EQ(ringBuffer.getNumValuesInBuffer(), 2);
+
+        EXPECT_EQ(ringBuffer.getWriteIdx(), 0);
+
+        // Should be unchanged.
+        EXPECT_EQ(ringBuffer.getLength(), length);
     }
 
-    // Test 3: Writing a fractional index value
-    TEST_F(RingBufferTest, WriteFloatIndex) {
-        EXPECT_TRUE(false);
+    // Test state after initialization and reset.
+    TEST_F(RingBufferTest, Reset) {
+        RingBuffer<float> ringBuffer(512);
+
+        // Check initial state.
+        EXPECT_EQ(ringBuffer.getReadIdx(), 0);
+        EXPECT_EQ(ringBuffer.getWriteIdx(), 0);
+        for (int i = 0; i < ringBuffer.getLength(); i++) {
+            EXPECT_EQ(ringBuffer.get(i), 0.0f);
+        }
+
+        // Fill ring buffer, mess with indices.
+        const float fill = 123.456f;
+        for (int i = 0; i < ringBuffer.getLength(); i++) {
+            ringBuffer.putPostInc(fill);
+            EXPECT_EQ(ringBuffer.get(i), fill);
+        }
+
+        ringBuffer.setWriteIdx(17);
+        ringBuffer.setReadIdx(42);
+
+        // Check state after reset.
+        ringBuffer.reset();
+        EXPECT_EQ(ringBuffer.getReadIdx(), 0);
+        EXPECT_EQ(ringBuffer.getWriteIdx(), 0);
+        for (int i = 0; i < ringBuffer.getLength(); i++) {
+            EXPECT_EQ(ringBuffer.get(i), 0.0f);
+        }
     }
 
-    // Test 4a: Writing when the buffer is full
-    // Test 4b: Reading when the buffer is empty
-    TEST_F(RingBufferTest, EmptyFull) {
-        EXPECT_TRUE(false);
+    // Test inputs to setWriteIdx/setReadIdx outside of bounds [0, length).
+    TEST_F(RingBufferTest, Bounds) {
+        RingBuffer<float> ringBuffer(5);
+
+        ringBuffer.setWriteIdx(5);
+        EXPECT_EQ(ringBuffer.getWriteIdx(), 0);
+        ringBuffer.setWriteIdx(17);
+        EXPECT_EQ(ringBuffer.getWriteIdx(), 2);
+        ringBuffer.setWriteIdx(-2);
+        EXPECT_EQ(ringBuffer.getWriteIdx(), 3);
+
+        ringBuffer.setReadIdx(5);
+        EXPECT_EQ(ringBuffer.getReadIdx(), 0);
+        ringBuffer.setReadIdx(17);
+        EXPECT_EQ(ringBuffer.getReadIdx(), 2);
+        ringBuffer.setReadIdx(-2);
+        EXPECT_EQ(ringBuffer.getReadIdx(), 3);
+    }
+
+    // Test as a delay using a random signal.
+    TEST_F(RingBufferTest, Signal) {
+        const int signalLength = 1024;
+        int signal[signalLength];
+        RingBuffer<int> ringBuffer(256);
+
+        // Generate random signal.
+        srand(time(NULL));
+        for (int i = 0; i < signalLength; i++) {
+            signal[i] = rand();
+        }
+
+        // Feed signal to ring buffer.
+        // Wait for `delay` to start taking values out,
+        // and then ensure the signal is delayed as expected.
+        int delay = 100;
+        for (int i = 0; i < ringBuffer.getLength() * 4; i++) {
+            ringBuffer.putPostInc(signal[i]);
+            if (i >= delay) {
+                EXPECT_EQ(ringBuffer.getPostInc(), signal[i - delay]);
+            }
+        }
+    }
+
+    // Test fractional offset.
+    TEST_F(RingBufferTest, Fraction) {
+        RingBuffer<float> ringBuffer(3);
+        ringBuffer.putPostInc(17);
+        ringBuffer.putPostInc(40);
+        ringBuffer.putPostInc(-5);
+        EXPECT_EQ(ringBuffer.get(0.5f), (17 + 40)/2.0);
+        EXPECT_EQ(ringBuffer.get(1.5f), (40 - 5)/2.0);
+        EXPECT_EQ(ringBuffer.get(-0.5f), (17 - 5)/2.0);
     }
 
     class VibratoTest: public testing::Test {
