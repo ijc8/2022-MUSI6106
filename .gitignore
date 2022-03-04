@@ -65,3 +65,6 @@ inc/MUSI6106Config.h
 
 # VSCode
 .vscode
+
+# MacOS
+.DS_Store
