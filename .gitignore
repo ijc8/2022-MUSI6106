@@ -54,3 +54,17 @@ bld
 /cmake.modules/*.bak
 2022-MUSI6106-cppcheck-build-dir
 /src/*.bak
+
+# CMake + build artifacts
+*.cmake
+CMakeCache.txt
+CMakeFiles
+Makefile
+build
+inc/MUSI6106Config.h
+
+# VSCode
+.vscode
+
+# MacOS
+.DS_Store
