@@ -268,8 +268,8 @@ namespace vibrato_test {
         CAudioFileIf::create(phInputAudioFile);
         CAudioFileIf::create(phOutputAudioFile);
         phInputAudioFile->openFile(inputPath, CAudioFileIf::kFileRead);
-        phOutputAudioFile->openFile(outputPath, CAudioFileIf::kFileWrite);
         phInputAudioFile->getFileSpec(stFileSpec);
+        phOutputAudioFile->openFile(outputPath, CAudioFileIf::kFileWrite, &stFileSpec);
 
         long long int iNumFrames;
         float **ppfInputAudioData = 0;
@@ -285,7 +285,7 @@ namespace vibrato_test {
         int bsIndex = 0;
 
         while (!phInputAudioFile->isEof()) {
-            iNumFrames = blockSizes[++bsIndex % 4];
+            iNumFrames = blockSizes[bsIndex++ % 4];
 
             for (int i = 0; i < stFileSpec.iNumChannels; i++) {
                 ppfInputAudioData[i] = new float[iNumFrames];
@@ -295,15 +295,16 @@ namespace vibrato_test {
             phInputAudioFile->readData(ppfInputAudioData, iNumFrames);
             vibrato.process(ppfInputAudioData, ppfOutputAudioData, iNumFrames);
             phOutputAudioFile->writeData(ppfOutputAudioData, iNumFrames);
+
+            for (int i = 0; i < stFileSpec.iNumChannels; i++) {
+                delete[] ppfInputAudioData[i];
+                delete[] ppfOutputAudioData[i];
+            }
         }
 
         CAudioFileIf::destroy(phInputAudioFile);
         CAudioFileIf::destroy(phOutputAudioFile);
 
-        for (int c = 0; c < stFileSpec.iNumChannels; c++){
-            delete[] ppfInputAudioData[c];
-            delete[] ppfOutputAudioData[c];
-        }
         delete[] ppfInputAudioData;
         delete[] ppfOutputAudioData;
     }
