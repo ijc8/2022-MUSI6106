@@ -1,6 +1,7 @@
 #include "MUSI6106Config.h"
 
 #ifdef WITH_TESTS
+#include "AudioFileIf.h"
 #include "Vector.h"
 #include "Vibrato.h"
 #include "RingBuffer.h"
@@ -179,25 +180,152 @@ namespace vibrato_test {
         virtual void TearDown() {};
     };
 
+    void compareDC(int numChannels, int fileSize, float DCValue, int blockSize, float depth, float frequency){
+        float **ppfInputData = new float*[numChannels];
+        float **ppfOutputData = new float*[numChannels];
+        for (int c = 0; c < numChannels; c++){
+            ppfInputData[c] = new float[fileSize];
+            ppfOutputData[c] = new float[fileSize];
+            for(int i = 0; i < fileSize; i++){
+                ppfInputData[c][i] = DCValue;
+            }
+        }
+        Vibrato testVibrato(44100, 0.5, numChannels);
+        testVibrato.setFrequency(frequency);
+        testVibrato.setDepth(depth);
+        testVibrato.process(ppfInputData, ppfOutputData, blockSize);
+
+        for (int c = 0; c < numChannels; c++) {
+            for (int i = 0; i < blockSize, i++;) {
+                bool isZero = ppfOutputData[c][i] == 0;
+                bool isDC = ppfOutputData[c][i] == DCValue;
+                EXPECT_TRUE(isZero || isDC);
+            }
+            delete[] ppfOutputData[c];
+        }
+        delete[] ppfOutputData;
+    }
+
     TEST_F(VibratoTest, CheckZeroModulation) {
-        EXPECT_TRUE(false);
+        std::string inputPath = "input_music.wav";
+
+        CAudioFileIf *phInputAudioFile = 0;
+        CAudioFileIf::FileSpec_t stFileSpec;
+
+        CAudioFileIf::create(phInputAudioFile);
+        phInputAudioFile->openFile(inputPath, CAudioFileIf::kFileRead);
+        phInputAudioFile->getFileSpec(stFileSpec);
+
+        long long int blockSize = 1024;
+        float **ppfInputAudioData = 0;
+        float **ppfOutputAudioData = 0;
+
+        ppfInputAudioData = new float*[stFileSpec.iNumChannels];
+        ppfOutputAudioData = new float*[stFileSpec.iNumChannels];
+        for (int i = 0; i < stFileSpec.iNumChannels; i++) {
+            ppfInputAudioData[i] = new float[blockSize];
+            ppfOutputAudioData[i] = new float[blockSize];
+        }
+        Vibrato vibrato(stFileSpec.fSampleRateInHz, 0, stFileSpec.iNumChannels);
+        vibrato.setFrequency(0);
+        vibrato.setDepth(0);
+
+        while (!phInputAudioFile->isEof()) {
+            long long iNumFrames = blockSize;
+
+            phInputAudioFile->readData(ppfInputAudioData, iNumFrames);
+            vibrato.process(ppfInputAudioData, ppfOutputAudioData, iNumFrames);
+        }
+
+        CAudioFileIf::destroy(phInputAudioFile);
+
+        for (int c = 0; c < stFileSpec.iNumChannels; c++){
+            for(int i = 0; i < blockSize; i++){
+                EXPECT_FLOAT_EQ(ppfInputAudioData[c][i], ppfOutputAudioData[c][i]);
+            }
+
+            delete[] ppfInputAudioData[c];
+            delete[] ppfOutputAudioData[c];
+        }
+        delete[] ppfInputAudioData;
+        delete[] ppfOutputAudioData;
+
     }
 
     TEST_F(VibratoTest, CheckDCInput) {
-        EXPECT_TRUE(false);
+        compareDC(1, 100000, 0.98765f, 1024, 0.1f, 100.f);
     }
 
     TEST_F(VibratoTest, VaryingBlockSize) {
         int blockSizes[] = {123, 234, 3456, 45678};
-        EXPECT_TRUE(false);
+        std::string inputPath = "input_music.wav";
+        std::string outputPath = "input_music_varying_block.wav";
+
+        CAudioFileIf *phInputAudioFile = 0;
+        CAudioFileIf *phOutputAudioFile = 0;
+        CAudioFileIf::FileSpec_t stFileSpec;
+
+        CAudioFileIf::create(phInputAudioFile);
+        CAudioFileIf::create(phOutputAudioFile);
+        phInputAudioFile->openFile(inputPath, CAudioFileIf::kFileRead);
+        phOutputAudioFile->openFile(outputPath, CAudioFileIf::kFileWrite);
+        phInputAudioFile->getFileSpec(stFileSpec);
+
+        long long int iNumFrames;
+        float **ppfInputAudioData = 0;
+        float **ppfOutputAudioData = 0;
+
+        ppfInputAudioData = new float*[stFileSpec.iNumChannels];
+        ppfOutputAudioData = new float*[stFileSpec.iNumChannels];
+
+        Vibrato vibrato(stFileSpec.fSampleRateInHz, 0, stFileSpec.iNumChannels);
+        vibrato.setFrequency(0);
+        vibrato.setDepth(0);
+
+        int bsIndex = 0;
+
+        while (!phInputAudioFile->isEof()) {
+            iNumFrames = blockSizes[++bsIndex % 4];
+
+            for (int i = 0; i < stFileSpec.iNumChannels; i++) {
+                ppfInputAudioData[i] = new float[iNumFrames];
+                ppfOutputAudioData[i] = new float[iNumFrames];
+            }
+
+            phInputAudioFile->readData(ppfInputAudioData, iNumFrames);
+            vibrato.process(ppfInputAudioData, ppfOutputAudioData, iNumFrames);
+            phOutputAudioFile->writeData(ppfOutputAudioData, iNumFrames);
+        }
+
+        CAudioFileIf::destroy(phInputAudioFile);
+        CAudioFileIf::destroy(phOutputAudioFile);
+
+        for (int c = 0; c < stFileSpec.iNumChannels; c++){
+            delete[] ppfInputAudioData[c];
+            delete[] ppfOutputAudioData[c];
+        }
+        delete[] ppfInputAudioData;
+        delete[] ppfOutputAudioData;
     }
 
     TEST_F(VibratoTest, ZeroInput) {
-        EXPECT_TRUE(false);
+        compareDC(1, 100000, 0.0f, 1024 , 0.1f, 100.f);
     }
 
-    TEST_F(VibratoTest, CustomTest) {
-        EXPECT_TRUE(false);
+    //if the frequency equals the sample rate, then we shouldn't be incrementing through the LFO wavetable
+    TEST_F(VibratoTest, FrequencyEqualsSampleRate) {
+        float sr = 44100;
+        LFO testLFO(sr, 4096);
+        testLFO.setFrequency(sr);
+        testLFO.setAmplitude(1);
+
+        float value = testLFO.process();
+        float testVal;
+        for(int i = 0; i < 100000; i++){
+            float testVal = testLFO.process();
+            EXPECT_EQ(value, testVal);
+            value = testVal;
+        }
     }
 }
 
