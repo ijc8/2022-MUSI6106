@@ -90,4 +90,3 @@ if(WITH_DOXYGENTARGET)
             COMMAND ${DOXYGEN_EXECUTABLE} ${PROJECT_BINARY_DIR}/docs/doxy.config
             SOURCES ${PROJECT_BINARY_DIR}/docs/doxy.config)
 endif(WITH_DOXYGENTARGET)
-

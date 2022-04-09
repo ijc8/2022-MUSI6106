@@ -9,38 +9,33 @@
 
 
 namespace {
-    void CHECK_ARRAY_EQUAL(int *buffer1, int *buffer2, int iLength)
-    {
-        for (int i = 0; i < iLength; i++)
-        {
+    void CHECK_ARRAY_EQUAL(int *buffer1, int *buffer2, int iLength) {
+        for (int i = 0; i < iLength; i++) {
             EXPECT_EQ(buffer1[i], buffer2[i]);
         }
     }
 
-    class Dtw : public testing::Test
-    {
+    class Dtw : public testing::Test {
     protected:
-        void SetUp() override 
-        {
+        void SetUp() override {
             m_pCDtw = new CDtw();
             m_ppfData = 0;
             m_ppiPath = 0;
         }
 
-        virtual void TearDown()
-        {
-            for (int i = 0; i < m_aiMatrixDimension[0]; i++)
-            {
+        virtual void TearDown() {
+            for (int i = 0; i < m_aiMatrixDimension[0]; i++) {
                 delete[] m_ppfData[i];
             }
             delete[] m_ppfData;
             m_ppfData = 0;
             delete m_pCDtw;
 
-            if (m_ppiPath)
+            if (m_ppiPath) {
                 for (int k = 0; k < CDtw::kNumMatrixDimensions; k++)
                     delete[] m_ppiPath[k];
-            delete[] m_ppiPath;
+                delete[] m_ppiPath;
+            }
         }
 
         CDtw* m_pCDtw = 0;
@@ -48,15 +43,13 @@ namespace {
         float** m_ppfData = 0;
         int** m_ppiPath = 0;
 
-        int     m_aiMatrixDimension[2] = {0, 0};
+        int m_aiMatrixDimension[2] = {0, 0};
     };
 }
 
 
-TEST_F(Dtw, AcaExample)
-{
+TEST_F(Dtw, AcaExample) {
     int iPathLength = 0;
-
 
     int aiPathResultRow[5] = { 0, 1, 2, 3, 4 };
     int aiPathResultCol[5] = { 0, 0, 1, 2, 3 };
@@ -92,8 +85,7 @@ TEST_F(Dtw, AcaExample)
     CHECK_ARRAY_EQUAL(aiPathResultCol, m_ppiPath[CDtw::kCol], iPathLength);
 }
 
-TEST_F(Dtw, Api)
-{
+TEST_F(Dtw, Api) {
     m_aiMatrixDimension[0] = 5;
     m_aiMatrixDimension[1] = 4;
 
@@ -109,8 +101,7 @@ TEST_F(Dtw, Api)
     EXPECT_EQ(0, m_pCDtw->getPathLength());
 }
 
-TEST_F(Dtw, SingleCol)
-{
+TEST_F(Dtw, SingleCol) {
     int iPathLength = 0;
 
     m_aiMatrixDimension[0] = 3;
@@ -138,15 +129,13 @@ TEST_F(Dtw, SingleCol)
 
     m_pCDtw->getPath(m_ppiPath);
 
-    for (int i = 0; i < iPathLength; i++)
-    {
+    for (int i = 0; i < iPathLength; i++) {
         EXPECT_EQ(0, m_ppiPath[CDtw::kCol][i]);
         EXPECT_EQ(i, m_ppiPath[CDtw::kRow][i]);
     }
 }
 
-TEST_F(Dtw, SingleRow)
-{
+TEST_F(Dtw, SingleRow) {
     int iPathLength = 0;
 
     m_aiMatrixDimension[0] = 1;
@@ -172,8 +161,7 @@ TEST_F(Dtw, SingleRow)
 
     m_pCDtw->getPath(m_ppiPath);
 
-    for (int i = 0; i < iPathLength; i++)
-    {
+    for (int i = 0; i < iPathLength; i++) {
         EXPECT_EQ(i, m_ppiPath[CDtw::kCol][i]);
         EXPECT_EQ(0, m_ppiPath[CDtw::kRow][i]);
     }
