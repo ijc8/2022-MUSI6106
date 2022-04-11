@@ -4,6 +4,10 @@
 
 #pragma once
 
+#include <memory>
+#include <vector>
+
+#include "RingBuffer.h"
 #include "ErrorDef.h"
 
 /*! \brief interface for fast convolution
@@ -50,7 +54,15 @@ public:
     Error_t flushBuffer(float* pfOutputBuffer);
 
 private:
+    ConvCompMode_t mode;
+    // Question 1: Can we assume the pfImpulseResponse pointer the user gives us remains valid?
+    // Or should we copy their provided data into our own buffer as a precaution?
+    // Question 2: Am I correct in thinking iBlockLength is unused in time-domain mode?
+    std::vector<float> impulseResponse;
+    std::unique_ptr<CRingBuffer<float>> history;
 
+    void processTimeDomain(float *output, const float *input, int length);
+    void processFreqDomain(float *output, const float *input, int length);
 };
 
 

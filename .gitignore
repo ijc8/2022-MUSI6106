@@ -56,3 +56,12 @@ bld
 /src/*.bak
 /build/inc
 /src/Vibrato/*.bak
+
+# Build artifacts
+**/CMakeFiles/
+build/
+Makefile
+CMakeCache.txt
+*.cmake
+inc/MUSI6106Config.h
+docs/doxy.config
