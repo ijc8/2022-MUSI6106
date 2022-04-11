@@ -10,32 +10,44 @@
 
 
 namespace fastconv_test {
-    void CHECK_ARRAY_CLOSE(float* buffer1, float* buffer2, int iLength, float fTolerance)
-    {
-        for (int i = 0; i < iLength; i++)
-        {
+    void CHECK_ARRAY_CLOSE(float* buffer1, float* buffer2, int iLength, float fTolerance) {
+        for (int i = 0; i < iLength; i++) {
             EXPECT_NEAR(buffer1[i], buffer2[i], fTolerance);
         }
     }
 
-    class FastConv: public testing::Test
-    {
+    class FastConv: public testing::Test {
     protected:
-        void SetUp() override
-        {
+        void SetUp() override {
+            fastConv = new CFastConv;
         }
 
-        virtual void TearDown()
-        {
+        virtual void TearDown() {
+            delete fastConv;
         }
 
-        CFastConv *m_pCFastConv = 0;
+        CFastConv *fastConv = 0;
     };
 
-    TEST_F(FastConv, EmptyTest)
-    {
+    TEST_F(FastConv, Identity) {
+        const int irLength = 51;
+        float impulseResponse[irLength];
+        // Generate random impulse response (samples from -1 to 1).
+        for (int i = 0; i < irLength; i++) {
+            impulseResponse[i] = (float)rand() / RAND_MAX * 2 - 1;
+        }
+
+        fastConv->init(impulseResponse, irLength, 0, CFastConv::kTimeDomain);
+        const int inputLength = 10;
+        int shift = 3;
+        float input[inputLength] = {0};
+        input[shift] = 1;
+        float output[inputLength];
+        fastConv->process(output, input, inputLength);
+        for (int i = 0; i < inputLength; i++) {
+            EXPECT_EQ(output[i], i < shift ? 0 : impulseResponse[i - shift]);
+        }
     }
 }
 
 #endif //WITH_TESTS
-

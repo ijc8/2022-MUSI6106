@@ -34,12 +34,15 @@ Error_t CFastConv::process(float *pfOutputBuffer, const float *pfInputBuffer, in
 }
 
 void CFastConv::processTimeDomain(float *output, const float *input, int length) {
-    assert(false); // not implemented yet
-    // plan:
-    // - push input value on to history buffer
-    // - take dot product of history buffer and impulse response (mind the flipped direction)
-    // - write result to output
-    // - repeat `length` times
+    for (int i = 0; i < length; i++) {
+        history->putPostInc(input[i]);
+        float acc = 0;
+        for (int j = 0; j < impulseResponse.size(); j++) {
+            acc += impulseResponse[j] * history->get(-j);
+        }
+        output[i] = acc;
+        history->getPostInc();
+    }
 }
 
 void CFastConv::processFreqDomain(float *output, const float *input, int length) {
