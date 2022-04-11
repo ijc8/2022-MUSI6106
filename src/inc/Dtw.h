@@ -4,6 +4,9 @@
 
 #pragma once
 
+#include <array>
+#include <vector>
+
 #include "ErrorDef.h"
 
 /*! \brief basic dynamic time warping 
@@ -62,6 +65,8 @@ private:
     int rows, cols;
     float *costMatrix = nullptr;
     int *parentMatrix = nullptr;
+
+    std::vector<std::array<int, 2>> path;
 };
 
 

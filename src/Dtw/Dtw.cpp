@@ -1,4 +1,3 @@
-#include <array>
 #include <algorithm>
 
 #include "Vector.h"
@@ -21,6 +20,9 @@ CDtw::~CDtw() {
 }
 
 Error_t CDtw::init(int iNumRows, int iNumCols) {
+    if (iNumRows <= 0 || iNumCols <= 0) {
+        return Error_t::kFunctionInvalidArgsError;
+    }
     rows = iNumRows;
     cols = iNumCols;
 
@@ -31,9 +33,11 @@ Error_t CDtw::init(int iNumRows, int iNumCols) {
     memset(parentMatrix, 0, sizeof(int) * rows * cols);
 
     // Initialize parent matrix.
-    for (int col = 0; col < cols; col++) parentMatrix[cols] = 2; // (0, -1)
-    for (int row = 0; row < rows; row++) parentMatrix[row*cols] = 1; // (-1, 0)
+    for (int col = 0; col < cols; col++) parentMatrix[idx(0, col)] = 2; // (0, -1)
+    for (int row = 0; row < rows; row++) parentMatrix[idx(row, 0)] = 1; // (-1, 0)
     parentMatrix[0] = 0; // (-1, -1)
+
+    m_bIsInitialized = true;
 
     return Error_t::kNoError;
 }
@@ -48,6 +52,7 @@ Error_t CDtw::reset() {
         delete[] parentMatrix;
         parentMatrix = nullptr;
     }
+    path.clear();
     return Error_t::kNoError;
 }
 
@@ -68,11 +73,11 @@ Error_t CDtw::process(float **ppfDistanceMatrix) {
     acc = 0;
     for (int row = 0; row < rows; row++) {
         acc += ppfDistanceMatrix[row][0];
-        costMatrix[idx(row, 0)] = 0;
+        costMatrix[idx(row, 0)] = acc;
     }
 
-    for (int row = 0; row < rows; row++) {
-        for (int col = 0; col < cols; col++) {
+    for (int row = 1; row < rows; row++) {
+        for (int col = 1; col < cols; col++) {
             std::array<float, 3> costs = {
                 costMatrix[idx(row - 1, col - 1)],
                 costMatrix[idx(row - 1, col)],
@@ -86,6 +91,21 @@ Error_t CDtw::process(float **ppfDistanceMatrix) {
         }
     }
 
+
+    // Start with the last element.
+    int row = rows - 1;
+    int col = cols - 1;
+
+    path.clear();
+    while (row >= 0 || col >= 0) {
+        path.push_back({row, col});
+        int dir = parentMatrix[idx(row, col)];
+        row += DIRECTIONS[dir][0];
+        col += DIRECTIONS[dir][1];
+    }
+    // We built the path up backwards, so let's fix the order.
+    std::reverse(path.begin(), path.end());
+
     return Error_t::kNoError;
 }
 
@@ -94,27 +114,17 @@ inline int CDtw::idx(int row, int col) const {
 }
 
 int CDtw::getPathLength() {
-    // TODO
-    return -1;
+    return path.size();
 }
 
 float CDtw::getPathCost() const {
-    // TODO
-    return -1.F;
+    return costMatrix[idx(rows - 1, cols - 1)];
 }
 
 Error_t CDtw::getPath(int **ppiPathResult) const {
-    // TODO: Port this.
-    // p = np.asarray(D.shape, dtype=int) - 1  # start with the last element
-    // n = p
-
-    // while (n[0] >= 0) or (n[1] >= 0):
-    //     n = n + iDec[DeltaP[n[0], n[1]], :]
-
-    //     # update path
-    //     tmp = np.vstack([n, p])
-    //     p = tmp
-
-    // return p[1:, :], C
+    for (int i = 0; i < path.size(); i++) {
+        ppiPathResult[0][i] = path[i][0];
+        ppiPathResult[1][i] = path[i][1];
+    }
     return Error_t::kNoError;
 }
