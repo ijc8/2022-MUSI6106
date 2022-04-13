@@ -73,6 +73,34 @@ namespace fastconv_test {
             EXPECT_EQ(tail[i], index < irLength ? impulseResponse[index] : 0);
         }
     }
+
+    TEST_F(FastConv, BlockSize) {
+        const int irLength = 10;
+        float impulseResponse[irLength] = {0};
+        int shift = 3;
+        impulseResponse[shift] = 1;
+
+        const int inputLength = 10000;
+        float input[inputLength];
+        // Generate random input signal (samples from -1 to 1).
+        for (int i = 0; i < inputLength; i++) {
+            input[i] = (float)rand() / RAND_MAX * 2 - 1;
+        }
+        float output[inputLength];
+
+        fastConv->init(impulseResponse, irLength, 0, CFastConv::kTimeDomain);
+
+        // NOTE: These block sizes sum to `inputLength`.
+        int i = 0;
+        for (int blockSize : {1, 13, 1023, 2048, 1, 17, 5000, 1897}) {
+            fastConv->process(&output[i], &input[i], blockSize);
+            i += blockSize;
+        }
+
+        for (int i = 0; i < inputLength; i++) {
+            EXPECT_EQ(output[i], i < shift ? 0 : input[i - shift]);
+        }
+    }
 }
 
 #endif //WITH_TESTS
