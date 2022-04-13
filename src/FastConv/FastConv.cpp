@@ -50,6 +50,17 @@ void CFastConv::processFreqDomain(float *output, const float *input, int length)
 }
 
 Error_t CFastConv::flushBuffer(float* pfOutputBuffer) {
-    // TODO
+    // NOTE: The tail is always the length of the impulse response minus one,
+    // even if the user has provided fewer than `impulseResponse.size()` input samples.
+    // TODO: Maybe just implement this in terms of `process`?
+    for (int i = 0; i < impulseResponse.size() - 1; i++) {
+        history->putPostInc(0);
+        float acc = 0;
+        for (int j = 0; j < impulseResponse.size(); j++) {
+            acc += impulseResponse[j] * history->get(-j);
+        }
+        pfOutputBuffer[i] = acc;
+        history->getPostInc();
+    }
     return Error_t::kNoError;
 }
