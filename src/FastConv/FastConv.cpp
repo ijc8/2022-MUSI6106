@@ -71,12 +71,12 @@ void FreqConvolution::multiplySpectra(float *spectrumC, const float *spectrumA, 
     fft->splitRealImag(realB, imagB, spectrumB);
 
     float scale = blockLength * 2;
-    float realC[blockLength+1], imagC[blockLength+1];
     for (int i = 0; i < blockLength+1; i++) {
-        realC[i] = (realA[i] * realB[i] - imagA[i] * imagB[i]) * scale;
-        imagC[i] = (realA[i] * imagB[i] + imagA[i] * realB[i]) * scale;
+        float tmp = realA[i];
+        realA[i] = (tmp * realB[i] - imagA[i] * imagB[i]) * scale;
+        imagA[i] = (tmp * imagB[i] + imagA[i] * realB[i]) * scale;
     }
-    fft->mergeRealImag(spectrumC, realC, imagC);
+    fft->mergeRealImag(spectrumC, realA, imagA);
 }
 
 void FreqConvolution::process(float *output, const float *input, int length) {
