@@ -35,6 +35,7 @@ Error_t CFastConv::init(float *pfImpulseResponse, int iLengthOfIr, int iBlockLen
             impulseResponseBlocks[i].resize(blockLength * 2);
             memcpy(&impulseResponseBlocks[i][0], &pfImpulseResponse[i * blockLength], sizeof(float) * thisBlockLength);
         }
+        saved.resize(blockLength*2);
     }
     return Error_t::kNoError;
 }
@@ -79,23 +80,27 @@ void circularConvolve(float *output, const float *a, const float *b, int length)
 }
 
 void CFastConv::processFreqDomain(float *output, const float *input, int length) {
-    float convolution[length*2];
+    float convolution[blockLength*2];
     for (int i = 0; i < length; i++) {
         inputBuffer->putPostInc(input[i]);
         if (inputBuffer->getNumValuesInBuffer() >= blockLength) {
             std::vector<float> inputBlock(blockLength*2);
-            inputBuffer->get(inputBlock.data(), blockLength);
+            inputBuffer->getPostInc(inputBlock.data(), blockLength);
             inputBlockHistory->putPostInc(inputBlock);
             int wtf = impulseResponseBlocks.size();
             float acc[blockLength] = {0};
             for (int j = 0; j < wtf; j++) {
                 circularConvolve(convolution, impulseResponseBlocks[j].data(), inputBlockHistory->get(-j).data(), blockLength*2);
-                // Add the first half of the circular convolution.
-                CVectorFloat::add_I(acc, convolution, blockLength);
+                // Add the results of the circular convolution. (Due to zero-padding, should be equivalent to linear convolution.)
+                CVectorFloat::add_I(saved.data(), convolution, blockLength*2);
             }
+            // Output the first half.
             for (int k = 0; k < blockLength; k++) {
-                outputBuffer->putPostInc(acc[k]);
+                outputBuffer->putPostInc(saved[k]);
             }
+            // Save the second half.
+            memcpy(&saved[0], &saved[blockLength], sizeof(float) * blockLength);
+            memset(&saved[blockLength], 0, sizeof(float) * blockLength);
             inputBlockHistory->getPostInc();
         }
         output[i] = outputBuffer->getPostInc();
@@ -207,20 +212,16 @@ void CFastConv::_processFreqDomain(float *output, const float *input, int length
 
 }
 
-
-
 Error_t CFastConv::flushBuffer(float* pfOutputBuffer) {
-    // NOTE: The tail is always the length of the impulse response minus one,
+    // NOTE: The tail is the length of the impulse response minus one,
     // even if the user has provided fewer than `impulseResponse.size()` input samples.
-    // TODO: Maybe just implement this in terms of `process`?
-    for (int i = 0; i < impulseResponse.size() - 1; i++) {
-        history->putPostInc(0);
-        float acc = 0;
-        for (int j = 0; j < impulseResponse.size(); j++) {
-            acc += impulseResponse[j] * history->get(-j);
-        }
-        pfOutputBuffer[i] = acc;
-        history->getPostInc();
+    int length = impulseResponse.size() - 1;
+    if (mode == kFreqDomain) {
+        // For frequency domain convolution, the tail also includes
+        // the block size due to latency (initial output of zeros).
+        length += blockLength;
     }
+    float zeros[length] = {0};
+    process(pfOutputBuffer, zeros, length);
     return Error_t::kNoError;
 }

@@ -71,6 +71,7 @@ private:
     std::unique_ptr<CRingBuffer<float>> inputBuffer, outputBuffer;
     std::unique_ptr<CRingBuffer<std::vector<float>>> inputBlockHistory;
     std::vector<std::vector<float>> impulseResponseBlocks;
+    std::vector<float> saved;
 };
 
 

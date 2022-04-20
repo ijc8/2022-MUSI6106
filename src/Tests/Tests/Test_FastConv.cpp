@@ -110,17 +110,16 @@ namespace fastconv_test {
             impulseResponse[i] = (float)rand() / RAND_MAX * 2 - 1;
         }
 
-        fastConv->init(impulseResponse, irLength, 10, CFastConv::kFreqDomain);
+        const int blockLength = 4;
+        fastConv->init(impulseResponse, irLength, blockLength, CFastConv::kFreqDomain);
         const int inputLength = 10;
         int shift = 3;
         float input[inputLength] = {0};
         input[shift] = 1;
         float output[inputLength];
-        // Discard first `blockSize` samples.
-        fastConv->process(output, input, inputLength);
         fastConv->process(output, input, inputLength);
         for (int i = 0; i < inputLength; i++) {
-            EXPECT_EQ(output[i], i < shift ? 0 : impulseResponse[i - shift]);
+            EXPECT_EQ(output[i], i < (shift + blockLength) ? 0 : impulseResponse[i - (shift + blockLength)]);
         }
     }
 }
