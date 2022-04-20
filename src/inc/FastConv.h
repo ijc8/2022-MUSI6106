@@ -9,6 +9,7 @@
 
 #include "RingBuffer.h"
 #include "ErrorDef.h"
+#include "Fft.h"
 
 /*! \brief interface for fast convolution
 */
@@ -67,6 +68,9 @@ private:
     void processFreqDomain(float *output, const float *input, int length);
 
     // Only used for freq domain:
+    void circularConvolve(float *output, const float *a, const float *b, int length);
+
+    CFft *fft = nullptr;
     int blockLength;
     std::unique_ptr<CRingBuffer<float>> inputBuffer, outputBuffer;
     std::unique_ptr<CRingBuffer<std::vector<float>>> inputBlockHistory;

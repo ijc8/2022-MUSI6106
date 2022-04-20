@@ -10,6 +10,13 @@
 using std::cout;
 using std::endl;
 
+// Somehow, this existing prevents a linker error.
+void nope() {
+    CFft *fft;
+    CFft::createInstance(fft);
+    CFft::destroyInstance(fft);
+}
+
 int main(int argc, char* argv[]) {
     std::string sInputFilePath, sOutputFilePath, mode;
     float delayInSec;

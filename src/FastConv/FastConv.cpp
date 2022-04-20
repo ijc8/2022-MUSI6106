@@ -20,6 +20,9 @@ Error_t CFastConv::init(float *pfImpulseResponse, int iLengthOfIr, int iBlockLen
     if (mode == kTimeDomain) {
         history = std::make_unique<CRingBuffer<float>>(iLengthOfIr);
     } else {
+        CFft::createInstance(fft);
+        // TODO: Disable window function?
+        fft->initInstance(blockLength*2, 1, CFft::kWindowHann, CFft::kNoWindow);
         inputBuffer = std::make_unique<CRingBuffer<float>>(blockLength + 1);
         outputBuffer = std::make_unique<CRingBuffer<float>>(blockLength + 1);
         for (int i = 0; i < blockLength; i++) {
@@ -42,7 +45,7 @@ Error_t CFastConv::init(float *pfImpulseResponse, int iLengthOfIr, int iBlockLen
 
 Error_t CFastConv::reset() {
     // TODO
-
+    CFft::destroyInstance(fft);
     return Error_t::kNoError;
 }
 
@@ -69,15 +72,36 @@ void CFastConv::processTimeDomain(float *output, const float *input, int length)
     }
 }
 
-// TODO: Do this via FFT (see comments below).
-void circularConvolve(float *output, const float *a, const float *b, int length) {
-    for (int i = 0; i < length; i++) {
-        float acc = 0;
-        for (int j = 0; j < length; j++) {
-            acc += a[j] * b[(i - j + length) % length];
-        }
-        output[i] = acc;
+void CFastConv::circularConvolve(float *output, const float *a, const float *b, int length) {
+    // Time-domain implementation of circular convolution, for reference:
+    // for (int i = 0; i < length; i++) {
+    //     float acc = 0;
+    //     for (int j = 0; j < length; j++) {
+    //         acc += a[j] * b[(i - j + length) % length];
+    //     }
+    //     output[i] = acc;
+    // }
+    assert(length == blockLength * 2);
+
+    float spectrumA[blockLength*2];
+    float realA[blockLength+1], imagA[blockLength+1];
+    fft->doFft(spectrumA, a);
+    fft->splitRealImag(realA, imagA, spectrumA);
+
+    float spectrumB[blockLength*2];
+    float realB[blockLength+1], imagB[blockLength+1];
+    fft->doFft(spectrumB, b);
+    fft->splitRealImag(realB, imagB, spectrumB);
+
+    float scale = blockLength * 2;
+    float spectrumC[blockLength*2];
+    float realC[blockLength+1], imagC[blockLength+1];
+    for (int i = 0; i < blockLength+1; i++) {
+        realC[i] = (realA[i] * realB[i] - imagA[i] * imagB[i]) * scale;
+        imagC[i] = (realA[i] * imagB[i] + imagA[i] * realB[i]) * scale;
     }
+    fft->mergeRealImag(spectrumC, realC, imagC);
+    fft->doInvFft(output, spectrumC);
 }
 
 void CFastConv::processFreqDomain(float *output, const float *input, int length) {

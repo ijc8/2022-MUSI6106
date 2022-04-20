@@ -27,6 +27,7 @@ namespace fastconv_test {
         }
 
         CFastConv *fastConv = 0;
+        const float epsilon = 1e-6;
     };
 
     TEST_F(FastConv, Identity) {
@@ -120,7 +121,7 @@ namespace fastconv_test {
         float output[inputLength];
         fastConv->process(output, input, inputLength);
         for (int i = 0; i < inputLength; i++) {
-            EXPECT_EQ(output[i], i < (shift + blockLength) ? 0 : impulseResponse[i - (shift + blockLength)]);
+            EXPECT_NEAR(output[i], i < (shift + blockLength) ? 0 : impulseResponse[i - (shift + blockLength)], epsilon);
         }
     }
 
@@ -147,7 +148,7 @@ namespace fastconv_test {
         fastConv->flushBuffer(tail);
         for (int i = 0; i < tailLength; i++) {
             int index = i + inputLength - (shift + blockLength);
-            EXPECT_EQ(tail[i], index >= 0 && index < irLength ? impulseResponse[index] : 0);
+            EXPECT_NEAR(tail[i], index >= 0 && index < irLength ? impulseResponse[index] : 0, epsilon);
         }
     }
 
@@ -176,7 +177,7 @@ namespace fastconv_test {
         }
 
         for (int i = 0; i < inputLength; i++) {
-            EXPECT_EQ(output[i], i < shift + blockLength ? 0 : input[i - (shift + blockLength)]);
+            EXPECT_NEAR(output[i], i < shift + blockLength ? 0 : input[i - (shift + blockLength)], epsilon);
         }
     }
 
