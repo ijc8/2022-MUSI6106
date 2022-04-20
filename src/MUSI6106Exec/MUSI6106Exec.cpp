@@ -10,15 +10,8 @@
 using std::cout;
 using std::endl;
 
-void showClInfo() {
-    cout << "MUSI6106 Assignment Executable" << endl;
-    cout << "(c) 2014-2022 by Alexander Lerch" << endl;
-    cout << endl;
-    return;
-}
-
 int main(int argc, char* argv[]) {
-    std::string sInputFilePath, sOutputFilePath;
+    std::string sInputFilePath, sOutputFilePath, mode;
     float delayInSec;
     int delayInSamples;
 
@@ -36,16 +29,16 @@ int main(int argc, char* argv[]) {
 
     CAudioFileIf::FileSpec_t stFileSpec;
 
-    showClInfo();
-
     // command line args
-    if (argc < 4) {
-        cout << "Usage: " << argv[0] << " <input file> <output file> <delay in seconds>" << endl;
+    if (argc < 5) {
+        cout << "Usage: " << argv[0] << " <input file> <output file> <delay in seconds> <time|freq>" << endl;
         return -1;
     }
     sInputFilePath = argv[1];
     sOutputFilePath = argv[2];
     delayInSec = atof(argv[3]);
+    mode = argv[4];
+
 
     // open audio files
     CAudioFileIf::create(phAudioFile);
@@ -89,10 +82,18 @@ int main(int argc, char* argv[]) {
     impulseResponse[0] = 1;
     impulseResponse[impulseResponseLength - 1] = 1;
     CFastConv fastConv;
-    fastConv.init(impulseResponse, impulseResponseLength, 0, CFastConv::kTimeDomain);
+    CFastConv::ConvCompMode_t convMode = mode == "time" ? CFastConv::kTimeDomain : CFastConv::kFreqDomain;
+    fastConv.init(impulseResponse, impulseResponseLength, kBlockSize, convMode);
 
     // processing
     clock_t processingTime = 0;
+    if (convMode == CFastConv::kFreqDomain) {
+        // Dump first block of samples, which are silent due to latency.
+        phAudioFile->readData(ppfInputAudio, iNumFrames);
+        clock_t start = clock();
+        fastConv.process(ppfOutputAudio[0], ppfInputAudio[0], iNumFrames);
+        processingTime += clock() - start;
+    }
     while (!phAudioFile->isEof()) {
         phAudioFile->readData(ppfInputAudio, iNumFrames);
         clock_t start = clock();
@@ -100,6 +101,7 @@ int main(int argc, char* argv[]) {
         processingTime += clock() - start;
         phAudioOutputFile->writeData(ppfOutputAudio, iNumFrames);
     }
+    // TODO: flush buffer
     cout << "reading/writing done in: \t" << (float)(clock() - time) / CLOCKS_PER_SEC << " seconds." << endl;
     cout << "time spent in process(): \t" << ((float)processingTime / CLOCKS_PER_SEC) << " seconds." << endl;
 

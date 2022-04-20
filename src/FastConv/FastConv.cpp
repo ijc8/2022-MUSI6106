@@ -69,6 +69,7 @@ void CFastConv::processTimeDomain(float *output, const float *input, int length)
     }
 }
 
+// TODO: Do this via FFT (see comments below).
 void circularConvolve(float *output, const float *a, const float *b, int length) {
     for (int i = 0; i < length; i++) {
         float acc = 0;
