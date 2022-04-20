@@ -30,7 +30,7 @@ namespace fastconv_test {
     };
 
     TEST_F(FastConv, Identity) {
-        const int irLength = 51;
+        int irLength = 51;
         float impulseResponse[irLength];
         // Generate random impulse response (samples from -1 to 1).
         for (int i = 0; i < irLength; i++) {
@@ -38,7 +38,7 @@ namespace fastconv_test {
         }
 
         fastConv->init(impulseResponse, irLength, 0, CFastConv::kTimeDomain);
-        const int inputLength = 10;
+        int inputLength = 10;
         int shift = 3;
         float input[inputLength] = {0};
         input[shift] = 1;
@@ -50,7 +50,7 @@ namespace fastconv_test {
     }
 
     TEST_F(FastConv, FlushBuffer) {
-        const int irLength = 51;
+        int irLength = 51;
         float impulseResponse[irLength];
         // Generate random impulse response (samples from -1 to 1).
         for (int i = 0; i < irLength; i++) {
@@ -58,7 +58,7 @@ namespace fastconv_test {
         }
 
         fastConv->init(impulseResponse, irLength, 0, CFastConv::kTimeDomain);
-        const int inputLength = 10;
+        int inputLength = 10;
         int shift = 3;
         float input[inputLength] = {0};
         input[shift] = 1;
@@ -75,12 +75,12 @@ namespace fastconv_test {
     }
 
     TEST_F(FastConv, BlockSize) {
-        const int irLength = 10;
+        int irLength = 10;
         float impulseResponse[irLength] = {0};
         int shift = 3;
         impulseResponse[shift] = 1;
 
-        const int inputLength = 10000;
+        int inputLength = 10000;
         float input[inputLength];
         // Generate random input signal (samples from -1 to 1).
         for (int i = 0; i < inputLength; i++) {
@@ -103,16 +103,16 @@ namespace fastconv_test {
     }
 
     TEST_F(FastConv, IdentityFreq) {
-        const int irLength = 51;
+        int irLength = 51;
         float impulseResponse[irLength];
         // Generate random impulse response (samples from -1 to 1).
         for (int i = 0; i < irLength; i++) {
             impulseResponse[i] = (float)rand() / RAND_MAX * 2 - 1;
         }
 
-        const int blockLength = 4;
+        int blockLength = 4;
         fastConv->init(impulseResponse, irLength, blockLength, CFastConv::kFreqDomain);
-        const int inputLength = 10;
+        int inputLength = 10;
         int shift = 3;
         float input[inputLength] = {0};
         input[shift] = 1;
@@ -124,7 +124,7 @@ namespace fastconv_test {
     }
 
     TEST_F(FastConv, FlushBufferFreq) {
-        const int irLength = 51;
+        int irLength = 51;
         float impulseResponse[irLength];
         // Generate random impulse response (samples from -1 to 1).
         for (int i = 0; i < irLength; i++) {
@@ -133,7 +133,7 @@ namespace fastconv_test {
 
         int blockLength = 8;
         fastConv->init(impulseResponse, irLength, blockLength, CFastConv::kFreqDomain);
-        const int inputLength = 10;
+        int inputLength = 10;
         int shift = 3;
         float input[inputLength] = {0};
         input[shift] = 1;
@@ -147,6 +147,35 @@ namespace fastconv_test {
         for (int i = 0; i < tailLength; i++) {
             int index = i + inputLength - (shift + blockLength);
             EXPECT_EQ(tail[i], index >= 0 && index < irLength ? impulseResponse[index] : 0);
+        }
+    }
+
+    TEST_F(FastConv, BlockSizeFreq) {
+        int irLength = 10;
+        float impulseResponse[irLength] = {0};
+        int shift = 3;
+        impulseResponse[shift] = 1;
+
+        int inputLength = 10000;
+        float input[inputLength];
+        // Generate random input signal (samples from -1 to 1).
+        for (int i = 0; i < inputLength; i++) {
+            input[i] = (float)rand() / RAND_MAX * 2 - 1;
+        }
+        float output[inputLength];
+
+        int blockLength = 2048;
+        fastConv->init(impulseResponse, irLength, blockLength, CFastConv::kFreqDomain);
+
+        // NOTE: These block sizes sum to `inputLength`.
+        int i = 0;
+        for (int blockSize : {1, 13, 1023, 2048, 1, 17, 5000, 1897}) {
+            fastConv->process(&output[i], &input[i], blockSize);
+            i += blockSize;
+        }
+
+        for (int i = 0; i < inputLength; i++) {
+            EXPECT_EQ(output[i], i < shift + blockLength ? 0 : input[i - (shift + blockLength)]);
         }
     }
 }
