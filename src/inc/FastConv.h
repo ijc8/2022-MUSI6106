@@ -11,22 +11,29 @@
 #include "ErrorDef.h"
 #include "Fft.h"
 
-class TimeConvolution {
+class Convolution {
+public:
+    virtual ~Convolution() {};
+    virtual void process(float *output, const float *input, int length) = 0;
+    virtual int getTailLength() const = 0;
+};
+
+class TimeConvolution: public Convolution {
 public:
     TimeConvolution(const float *impulseResponse, int length);
-    void process(float *output, const float *input, int length);
-    int getTailLength();
+    void process(float *output, const float *input, int length) override;
+    int getTailLength() const override;
 private:
     std::vector<float> impulseResponse;
     CRingBuffer<float> history;
 };
 
-class FreqConvolution {
+class FreqConvolution: public Convolution {
 public:
     FreqConvolution(const float *impulseResponse, int length, int blockLength);
     ~FreqConvolution();
-    void process(float *output, const float *input, int length);
-    int getTailLength();
+    void process(float *output, const float *input, int length) override;
+    int getTailLength() const override;
 private:
     void multiplySpectra(float *output, const float *a, const float *b);
 
@@ -76,7 +83,7 @@ public:
     Error_t process(float* pfOutputBuffer, const float* pfInputBuffer, int iLengthOfBuffers);
 
     /*! return the length of the tail; this is the minimum size of the buffer passed to `flushBuffer`. */
-    int getTailLength();
+    int getTailLength() const;
 
     /*! return the 'tail' after processing has finished (identical to feeding in zeros)
     \param pfOutputBuffer (mono)
@@ -85,11 +92,7 @@ public:
     Error_t flushBuffer(float* pfOutputBuffer);
 
 private:
-    ConvCompMode_t mode;
-
-    std::unique_ptr<TimeConvolution> timeConv;
-    std::unique_ptr<FreqConvolution> freqConv;
-    int irLength;
+    std::unique_ptr<Convolution> conv;
 };
 
 

@@ -22,7 +22,7 @@ void TimeConvolution::process(float *output, const float *input, int length) {
     }
 }
 
-int TimeConvolution::getTailLength() {
+int TimeConvolution::getTailLength() const {
     // NOTE: The tail is the length of the impulse response minus one,
     // even if the user has provided fewer than `impulseResponse.size()` input samples.
     return impulseResponse.size() - 1;
@@ -112,7 +112,7 @@ void FreqConvolution::process(float *output, const float *input, int length) {
     }
 }
 
-int FreqConvolution::getTailLength() {
+int FreqConvolution::getTailLength() const {
     // For frequency domain convolution, the tail also includes
     // the block size due to latency (initial output of zeros).
     return tailLength;
@@ -126,40 +126,30 @@ CFastConv::~CFastConv() {
 }
 
 Error_t CFastConv::init(float *pfImpulseResponse, int iLengthOfIr, int iBlockLength /*= 8192*/, ConvCompMode_t eCompMode /*= kFreqDomain*/) {
-    irLength = iLengthOfIr;
-    mode = eCompMode;
-    if (mode == kTimeDomain) {
-        timeConv = std::make_unique<TimeConvolution>(pfImpulseResponse, iLengthOfIr);
+    if (eCompMode == kTimeDomain) {
+        conv = std::make_unique<TimeConvolution>(pfImpulseResponse, iLengthOfIr);
+    } else if (eCompMode == kFreqDomain) {
+        conv = std::make_unique<FreqConvolution>(pfImpulseResponse, iLengthOfIr, iBlockLength);
     } else {
-        freqConv = std::make_unique<FreqConvolution>(pfImpulseResponse, iLengthOfIr, iBlockLength);
+        return Error_t::kFunctionInvalidArgsError;
     }
     return Error_t::kNoError;
 }
 
 Error_t CFastConv::reset() {
-    timeConv.release();
-    freqConv.release();
+    conv.release();
     return Error_t::kNoError;
 }
 
 Error_t CFastConv::process(float *pfOutputBuffer, const float *pfInputBuffer, int iLengthOfBuffers) {
-    if (mode == kTimeDomain) {
-        timeConv->process(pfOutputBuffer, pfInputBuffer, iLengthOfBuffers);
-    } else if (mode == kFreqDomain) {
-        freqConv->process(pfOutputBuffer, pfInputBuffer, iLengthOfBuffers);
-    } else {
-        return Error_t::kFunctionIllegalCallError;
-    }
+    if (!conv) return Error_t::kNotInitializedError;
+    conv->process(pfOutputBuffer, pfInputBuffer, iLengthOfBuffers);
     return Error_t::kNoError;
 }
 
-int CFastConv::getTailLength() {
-    if (mode == kTimeDomain) {
-        return timeConv->getTailLength();
-    } else if (mode == kFreqDomain) {
-        return freqConv->getTailLength();
-    }
-    return -1;
+int CFastConv::getTailLength() const {
+    if (!conv) return -1;
+    return conv->getTailLength();
 }
 
 Error_t CFastConv::flushBuffer(float* pfOutputBuffer) {
