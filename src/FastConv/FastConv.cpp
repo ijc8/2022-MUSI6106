@@ -21,7 +21,6 @@ Error_t CFastConv::init(float *pfImpulseResponse, int iLengthOfIr, int iBlockLen
         history = std::make_unique<CRingBuffer<float>>(iLengthOfIr);
     } else {
         CFft::createInstance(fft);
-        // TODO: Disable window function?
         fft->initInstance(blockLength*2, 1, CFft::kWindowHann, CFft::kNoWindow);
         inputBuffer = std::make_unique<CRingBuffer<float>>(blockLength + 1);
         outputBuffer = std::make_unique<CRingBuffer<float>>(blockLength + 1);
@@ -84,9 +83,7 @@ void CFastConv::processTimeDomain(float *output, const float *input, int length)
 //     }
 // }
 
-void CFastConv::circularConvolve(float *output, const float *spectrumA, const float *spectrumB, int length) {
-    assert(length == blockLength * 2);
-
+void CFastConv::multiplySpectra(float *spectrumC, const float *spectrumA, const float *spectrumB) {
     float realA[blockLength+1], imagA[blockLength+1];
     fft->splitRealImag(realA, imagA, spectrumA);
 
@@ -94,14 +91,12 @@ void CFastConv::circularConvolve(float *output, const float *spectrumA, const fl
     fft->splitRealImag(realB, imagB, spectrumB);
 
     float scale = blockLength * 2;
-    float spectrumC[blockLength*2];
     float realC[blockLength+1], imagC[blockLength+1];
     for (int i = 0; i < blockLength+1; i++) {
         realC[i] = (realA[i] * realB[i] - imagA[i] * imagB[i]) * scale;
         imagC[i] = (realA[i] * imagB[i] + imagA[i] * realB[i]) * scale;
     }
     fft->mergeRealImag(spectrumC, realC, imagC);
-    fft->doInvFft(output, spectrumC);
 }
 
 void CFastConv::processFreqDomain(float *output, const float *input, int length) {
@@ -113,10 +108,10 @@ void CFastConv::processFreqDomain(float *output, const float *input, int length)
             inputBuffer->getPostInc(inputBlock.data(), blockLength);
             fft->doFft(inputBlock.data(), inputBlock.data());
             inputBlockHistory->putPostInc(inputBlock);
-            int wtf = impulseResponseBlocks.size();
-            float acc[blockLength] = {0};
-            for (int j = 0; j < wtf; j++) {
-                circularConvolve(convolution, impulseResponseBlocks[j].data(), inputBlockHistory->get(-j).data(), blockLength*2);
+            int numBlocks = impulseResponseBlocks.size();
+            for (int j = 0; j < numBlocks; j++) {
+                multiplySpectra(convolution, impulseResponseBlocks[j].data(), inputBlockHistory->get(-j).data());
+                fft->doInvFft(convolution, convolution);
                 // Add the results of the circular convolution. (Due to zero-padding, should be equivalent to linear convolution.)
                 CVectorFloat::add_I(saved.data(), convolution, blockLength*2);
             }

@@ -69,7 +69,7 @@ private:
     void processFreqDomain(float *output, const float *input, int length);
 
     // Only used for freq domain:
-    void circularConvolve(float *output, const float *a, const float *b, int length);
+    void multiplySpectra(float *output, const float *a, const float *b);
 
     CFft *fft = nullptr;
     int blockLength;
