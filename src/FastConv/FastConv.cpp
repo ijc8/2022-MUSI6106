@@ -109,19 +109,20 @@ void CFastConv::processFreqDomain(float *output, const float *input, int length)
             fft->doFft(inputBlock.data(), inputBlock.data());
             inputBlockHistory->putPostInc(inputBlock);
             int numBlocks = impulseResponseBlocks.size();
+            float acc[blockLength*2] = {0};
             for (int j = 0; j < numBlocks; j++) {
                 multiplySpectra(convolution, impulseResponseBlocks[j].data(), inputBlockHistory->get(-j).data());
-                fft->doInvFft(convolution, convolution);
                 // Add the results of the circular convolution. (Due to zero-padding, should be equivalent to linear convolution.)
-                CVectorFloat::add_I(saved.data(), convolution, blockLength*2);
+                CVectorFloat::add_I(acc, convolution, blockLength*2);
             }
+            // Fourier Transform is linear, so we can just do the IFFT once after summing all the spectra.
+            fft->doInvFft(acc, acc);
             // Output the first half.
             for (int k = 0; k < blockLength; k++) {
-                outputBuffer->putPostInc(saved[k]);
+                outputBuffer->putPostInc(acc[k] + saved[k]);
             }
             // Save the second half.
-            memcpy(&saved[0], &saved[blockLength], sizeof(float) * blockLength);
-            memset(&saved[blockLength], 0, sizeof(float) * blockLength);
+            memcpy(&saved[0], &acc[blockLength], sizeof(float) * blockLength);
             inputBlockHistory->getPostInc();
         }
         output[i] = outputBuffer->getPostInc();
