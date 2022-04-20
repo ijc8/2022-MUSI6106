@@ -48,6 +48,7 @@ public:
     */
     Error_t process(float* pfOutputBuffer, const float* pfInputBuffer, int iLengthOfBuffers);
 
+    /*! return the length of the tail; this is the minimum size of the buffer passed to `flushBuffer`. */
     int getTailLength();
 
     /*! return the 'tail' after processing has finished (identical to feeding in zeros)

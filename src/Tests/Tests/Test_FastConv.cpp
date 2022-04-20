@@ -27,7 +27,7 @@ namespace fastconv_test {
         }
 
         CFastConv *fastConv = 0;
-        const float epsilon = 1e-6;
+        const float epsilon = 1e-5;
     };
 
     TEST_F(FastConv, Identity) {
@@ -181,7 +181,41 @@ namespace fastconv_test {
         }
     }
 
-    // TODO: Add test to confirm that time and frequency domain results are (nearly) equal.
+    // Extra test: confirm that time and frequency domain results are (nearly) equal.
+    TEST_F(FastConv, Consistent) {
+        int irLength = 51;
+        float impulseResponse[irLength];
+        // Generate random impulse response (samples from -1 to 1).
+        for (int i = 0; i < irLength; i++) {
+            impulseResponse[i] = (float)rand() / RAND_MAX * 2 - 1;
+        }
+
+        int inputLength = 10000;
+        float input[inputLength];
+        // Generate random input signal (samples from -1 to 1).
+        for (int i = 0; i < inputLength; i++) {
+            input[i] = (float)rand() / RAND_MAX * 2 - 1;
+        }
+        float freqOutput[inputLength];
+        float timeOutput[inputLength];
+
+        CFastConv slowConv;
+        int blockLength = 8;
+        fastConv->init(impulseResponse, irLength, blockLength, CFastConv::kFreqDomain);
+        slowConv.init(impulseResponse, irLength, 0, CFastConv::kTimeDomain);
+
+        // NOTE: These block sizes sum to `inputLength`.
+        int i = 0;
+        for (int blockSize : {1, 13, 1023, 2048, 1, 17, 5000, 1897}) {
+            fastConv->process(&freqOutput[i], &input[i], blockSize);
+            slowConv.process(&timeOutput[i], &input[i], blockSize);
+            i += blockSize;
+        }
+
+        for (int i = 0; i < inputLength; i++) {
+            EXPECT_NEAR(freqOutput[i], i < blockLength ? 0 : timeOutput[i - blockLength], epsilon);
+        }
+    }
 }
 
 #endif //WITH_TESTS
