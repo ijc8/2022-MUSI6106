@@ -63,20 +63,39 @@ FreqConvolution::~FreqConvolution() {
 //     }
 // }
 
+// Previous implementation of `multiplySpectra`, included for reference.
+// This has the advantage of not needing information about the internal layout used by CFft;
+// however, the constant spitRealImag/mergeRealImag calls adds considerable overhead.
+
+// void FreqConvolution::multiplySpectra(float *spectrumC, const float *spectrumA, const float *spectrumB) {
+//     std::vector<float> realA(blockLength+1), imagA(blockLength+1);
+//     fft->splitRealImag(realA.data(), imagA.data(), spectrumA);
+
+//     std::vector<float> realB(blockLength+1), imagB(blockLength+1);
+//     fft->splitRealImag(realB.data(), imagB.data(), spectrumB);
+
+//     float scale = blockLength * 2;
+//     for (int i = 0; i < blockLength+1; i++) {
+//         float tmp = realA[i];
+//         realA[i] = (tmp * realB[i] - imagA[i] * imagB[i]) * scale;
+//         imagA[i] = (tmp * imagB[i] + imagA[i] * realB[i]) * scale;
+//     }
+//     fft->mergeRealImag(spectrumC, realA.data(), imagA.data());
+// }
+
 void FreqConvolution::multiplySpectra(float *spectrumC, const float *spectrumA, const float *spectrumB) {
-    std::vector<float> realA(blockLength+1), imagA(blockLength+1);
-    fft->splitRealImag(realA.data(), imagA.data(), spectrumA);
-
-    std::vector<float> realB(blockLength+1), imagB(blockLength+1);
-    fft->splitRealImag(realB.data(), imagB.data(), spectrumB);
-
     float scale = blockLength * 2;
-    for (int i = 0; i < blockLength+1; i++) {
-        float tmp = realA[i];
-        realA[i] = (tmp * realB[i] - imagA[i] * imagB[i]) * scale;
-        imagA[i] = (tmp * imagB[i] + imagA[i] * realB[i]) * scale;
+    // Spectrum layout: re(0),re(1),re(2),...,re(size/2),im(size/2-1),...,im(1)
+    spectrumC[0] = (spectrumA[0] * spectrumB[0]) * scale;
+    spectrumC[blockLength] = (spectrumA[blockLength] * spectrumB[blockLength]) * scale;
+    for (int i = 1; i < blockLength; i++) {
+        float realA = spectrumA[i];
+        float imagA = spectrumA[blockLength*2-i];
+        float realB = spectrumB[i];
+        float imagB = spectrumB[blockLength*2-i];
+        spectrumC[i] = (realA * realB - imagA * imagB) * scale; // Real part
+        spectrumC[blockLength*2-i] = (realA * imagB + imagA * realB) * scale; // Imaginary part
     }
-    fft->mergeRealImag(spectrumC, realA.data(), imagA.data());
 }
 
 void FreqConvolution::process(float *output, const float *input, int length) {
