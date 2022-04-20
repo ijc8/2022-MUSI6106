@@ -37,8 +37,10 @@ public:
 private:
     CFft *fft = nullptr;
     int blockLength, tailLength, numBlocks;
-    CRingBuffer<float> inputBuffer, outputBuffer;
-    CRingBuffer<std::vector<float>> inputBlockHistory;
+    CRingBuffer<float> outputBuffer;
+    std::vector<float> inputBlockHistory;
+    int inputBufferIndex = 0;
+    int inputBlockIndex = 0;
     std::vector<std::vector<float>> impulseResponseBlocks;
     std::vector<float> acc, saved;
 };
