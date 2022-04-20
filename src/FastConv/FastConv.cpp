@@ -29,15 +29,10 @@ int TimeConvolution::getTailLength() const {
 }
 
 FreqConvolution::FreqConvolution(const float *impulseResponse, int length, int blockLength)
-: blockLength(blockLength), tailLength(length - 1 + blockLength),
-  acc(blockLength*2), saved(blockLength), outputBuffer(blockLength + 1),
-  numBlocks((int)ceil((float)length / blockLength)), inputBlockHistory(numBlocks*blockLength*2) {
+: blockLength(blockLength), tailLength(length - 1 + blockLength), numBlocks((int)ceil((float)length / blockLength)),
+  outputBlock(blockLength*2), saved(blockLength), inputBlockHistory(numBlocks*blockLength*2), impulseResponseBlocks(numBlocks) {
     CFft::createInstance(fft);
     fft->initInstance(blockLength*2, 1, CFft::kWindowHann, CFft::kNoWindow);
-    for (int i = 0; i < blockLength; i++) {
-        outputBuffer.putPostInc(0);
-    }
-    impulseResponseBlocks.resize(numBlocks);
     for (int i = 0; i < numBlocks; i++) {
         int thisBlockLength = std::min(blockLength, length - i * blockLength);
         impulseResponseBlocks[i].resize(blockLength * 2);
@@ -98,32 +93,33 @@ static inline void addMultiplySpectra(float *output, const float *spectrumA, con
 
 void FreqConvolution::process(float *output, const float *input, int length) {
     for (int i = 0; i < length; i++) {
-        inputBlockHistory[inputBlockIndex*blockLength*2 + inputBufferIndex++] = input[i];
-        if (inputBufferIndex >= blockLength) {
+        output[i] = outputBlock[indexInBlock];
+        inputBlockHistory[inputBlockIndex*blockLength*2 + indexInBlock++] = input[i];
+        if (indexInBlock == blockLength) {
             // We have another full input block for processing.
-            // Take the FFT, add it to our ring buffer.
+            // Take the FFT in-place.
             float *inputBlock = &inputBlockHistory[inputBlockIndex*blockLength*2];
-            // inputBuffer.getPostInc(inputBlock, blockLength);
             std::fill(&inputBlock[blockLength], &inputBlock[blockLength*2], 0);
+            // NOTE: Unfortunately CFft adds some overhead here from copying buffers around,
+            // even though in this case we actually want the operation in-place.
+            // This is the best we can do without using LaszloFft directly.
             fft->doFft(inputBlock, inputBlock);
+            // Save time-domain residue from last round.
+            memcpy(&saved[0], &outputBlock[blockLength], sizeof(float) * blockLength);
             // Sum results from circular convolutions (equivalent to linear convolutions due to zero-padding.)
-            std::fill(acc.begin(), acc.end(), 0);
+            // This is a kind of "higher-level" convolution of blocks.
+            std::fill(outputBlock.begin(), outputBlock.end(), 0);
             for (int j = 0; j < numBlocks; j++) {
                 int idx = (inputBlockIndex - j + numBlocks) % numBlocks;
-                addMultiplySpectra(acc.data(), impulseResponseBlocks[j].data(), &inputBlockHistory[idx*blockLength*2], blockLength);
+                addMultiplySpectra(outputBlock.data(), impulseResponseBlocks[j].data(), &inputBlockHistory[idx*blockLength*2], blockLength);
             }
             // Fourier Transform is linear, so we can just do the IFFT once after summing all the spectra.
-            fft->doInvFft(acc.data(), acc.data());
-            // Output the first half.
-            for (int j = 0; j < blockLength; j++) {
-                outputBuffer.putPostInc(acc[j] + saved[j]);
-            }
-            // Save the second half.
-            memcpy(&saved[0], &acc[blockLength], sizeof(float) * blockLength);
+            fft->doInvFft(outputBlock.data(), outputBlock.data());
+            // Add back the residue from last time.
+            CVectorFloat::add_I(outputBlock.data(), saved.data(), blockLength);
             inputBlockIndex = (inputBlockIndex + 1) % numBlocks;
-            inputBufferIndex = 0;
+            indexInBlock = 0;
         }
-        output[i] = outputBuffer.getPostInc();
     }
 }
 
