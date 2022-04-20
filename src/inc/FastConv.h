@@ -38,9 +38,9 @@ private:
     void multiplySpectra(float *output, const float *a, const float *b);
 
     CFft *fft = nullptr;
-    int blockLength, tailLength;
-    std::unique_ptr<CRingBuffer<float>> inputBuffer, outputBuffer;
-    std::unique_ptr<CRingBuffer<std::vector<float>>> inputBlockHistory;
+    int blockLength, tailLength, numBlocks;
+    CRingBuffer<float> inputBuffer, outputBuffer;
+    CRingBuffer<std::vector<float>> inputBlockHistory;
     std::vector<std::vector<float>> impulseResponseBlocks;
     std::vector<float> saved;
 };
