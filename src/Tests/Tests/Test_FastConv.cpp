@@ -101,6 +101,27 @@ namespace fastconv_test {
             EXPECT_EQ(output[i], i < shift ? 0 : input[i - shift]);
         }
     }
+
+    TEST_F(FastConv, IdentityFreq) {
+        const int irLength = 51;
+        float impulseResponse[irLength];
+        // Generate random impulse response (samples from -1 to 1).
+        for (int i = 0; i < irLength; i++) {
+            impulseResponse[i] = (float)rand() / RAND_MAX * 2 - 1;
+        }
+
+        fastConv->init(impulseResponse, irLength, 10, CFastConv::kFreqDomain);
+        const int inputLength = 10;
+        int shift = 3;
+        float input[inputLength] = {0};
+        input[shift] = 1;
+        float output[inputLength];
+        fastConv->process(output, input, inputLength);
+        fastConv->process(output, input, inputLength);
+        for (int i = 0; i < inputLength; i++) {
+            EXPECT_EQ(output[i], i < shift ? 0 : impulseResponse[i - shift]);
+        }
+    }
 }
 
 #endif //WITH_TESTS

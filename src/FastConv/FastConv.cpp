@@ -51,13 +51,15 @@ void CFastConv::processFreqDomain(float *output, const float *input, int length)
     int BlockLength = 32;
     int IdxWrite = 0;
     float* pfInputBlockBuffer = new float[2 * BlockLength]{ 0 };
-    int NumofBlock = static_cast<int>(std::ceil(static_cast<float>(impulseResponse.size()) / static_cast<float>(BlockLength)));
+    int NumofBlock = static_cast<int>(std::ceil(impulseResponse.size()) / static_cast<float>(BlockLength));
     int BlockIdxRead = NumofBlock - 1;
     float** ppfOutputBlockBuffer = new float* [NumofBlock];
     float* pfReal_BlockFFTCurrent = new float[BlockLength + 1];
     float* pfImage_BlockFFTCurrent = new float[BlockLength + 1];
     CFft* pforFFT = 0;
-    CFft::complex_t* pfComplexNum = 0;
+    CFft::createInstance(pforFFT);
+    pforFFT->initInstance(BlockLength);
+    CFft::complex_t* pfComplexNum = new float[2 * BlockLength];
     float* pfReal_FFT = new float[BlockLength + 1];
     float* pfImage_FFT = new float[BlockLength + 1];
     float* pf_IFFT = new float[2 * BlockLength]{ 0 };
