@@ -22,61 +22,40 @@ void TimeConvolution::process(float *output, const float *input, int length) {
     }
 }
 
-CFastConv::CFastConv() {
+int TimeConvolution::getTailLength() {
+    // NOTE: The tail is the length of the impulse response minus one,
+    // even if the user has provided fewer than `impulseResponse.size()` input samples.
+    return impulseResponse.size() - 1;
 }
 
-CFastConv::~CFastConv() {
-    reset();
-}
-
-Error_t CFastConv::init(float *pfImpulseResponse, int iLengthOfIr, int iBlockLength /*= 8192*/, ConvCompMode_t eCompMode /*= kFreqDomain*/) {
-    blockLength = iBlockLength;
-    irLength = iLengthOfIr;
-    mode = eCompMode;
-    if (mode == kTimeDomain) {
-        timeConv = std::make_unique<TimeConvolution>(pfImpulseResponse, iLengthOfIr);
-    } else {
-        CFft::createInstance(fft);
-        fft->initInstance(blockLength*2, 1, CFft::kWindowHann, CFft::kNoWindow);
-        inputBuffer = std::make_unique<CRingBuffer<float>>(blockLength + 1);
-        outputBuffer = std::make_unique<CRingBuffer<float>>(blockLength + 1);
-        for (int i = 0; i < blockLength; i++) {
-            outputBuffer->putPostInc(0);
-        }
-        int numBlocks = (int)ceil((float)iLengthOfIr / iBlockLength);
-        inputBlockHistory = std::make_unique<CRingBuffer<std::vector<float>>>(numBlocks);
-        std::vector<float> tmp(blockLength*2);
-        impulseResponseBlocks.resize(numBlocks);
-        for (int i = 0; i < numBlocks; i++) {
-            inputBlockHistory->putPostInc(tmp);
-            int thisBlockLength = std::min(blockLength, iLengthOfIr - i * blockLength);
-            impulseResponseBlocks[i].resize(blockLength * 2);
-            memcpy(&impulseResponseBlocks[i][0], &pfImpulseResponse[i * blockLength], sizeof(float) * thisBlockLength);
-            fft->doFft(impulseResponseBlocks[i].data(), impulseResponseBlocks[i].data());
-        }
-        saved.resize(blockLength);
+FreqConvolution::FreqConvolution(const float *impulseResponse, int length, int blockLength)
+: blockLength(blockLength), tailLength(length - 1 + blockLength) {
+    CFft::createInstance(fft);
+    fft->initInstance(blockLength*2, 1, CFft::kWindowHann, CFft::kNoWindow);
+    inputBuffer = std::make_unique<CRingBuffer<float>>(blockLength + 1);
+    outputBuffer = std::make_unique<CRingBuffer<float>>(blockLength + 1);
+    for (int i = 0; i < blockLength; i++) {
+        outputBuffer->putPostInc(0);
     }
-    return Error_t::kNoError;
+    int numBlocks = (int)ceil((float)length / blockLength);
+    inputBlockHistory = std::make_unique<CRingBuffer<std::vector<float>>>(numBlocks);
+    std::vector<float> tmp(blockLength*2);
+    impulseResponseBlocks.resize(numBlocks);
+    for (int i = 0; i < numBlocks; i++) {
+        inputBlockHistory->putPostInc(tmp);
+        int thisBlockLength = std::min(blockLength, length - i * blockLength);
+        impulseResponseBlocks[i].resize(blockLength * 2);
+        memcpy(&impulseResponseBlocks[i][0], &impulseResponse[i * blockLength], sizeof(float) * thisBlockLength);
+        fft->doFft(impulseResponseBlocks[i].data(), impulseResponseBlocks[i].data());
+    }
+    saved.resize(blockLength);
 }
 
-Error_t CFastConv::reset() {
-    // TODO
+FreqConvolution::~FreqConvolution() {
     CFft::destroyInstance(fft);
-    return Error_t::kNoError;
 }
 
-Error_t CFastConv::process(float *pfOutputBuffer, const float *pfInputBuffer, int iLengthOfBuffers) {
-    if (mode == kTimeDomain) {
-        timeConv->process(pfOutputBuffer, pfInputBuffer, iLengthOfBuffers);
-    } else if (mode == kFreqDomain) {
-        processFreqDomain(pfOutputBuffer, pfInputBuffer, iLengthOfBuffers);
-    } else {
-        return Error_t::kFunctionIllegalCallError;
-    }
-    return Error_t::kNoError;
-}
-
-// Time-domain implementation of circular convolution, for reference:
+// Time-domain implementation of circular convolution, for reference/testing:
 // void circularConvolve(float *output, const float *a, const float *b, int length) {
 //     for (int i = 0; i < length; i++) {
 //         float acc = 0;
@@ -87,7 +66,7 @@ Error_t CFastConv::process(float *pfOutputBuffer, const float *pfInputBuffer, in
 //     }
 // }
 
-void CFastConv::multiplySpectra(float *spectrumC, const float *spectrumA, const float *spectrumB) {
+void FreqConvolution::multiplySpectra(float *spectrumC, const float *spectrumA, const float *spectrumB) {
     float realA[blockLength+1], imagA[blockLength+1];
     fft->splitRealImag(realA, imagA, spectrumA);
 
@@ -103,7 +82,7 @@ void CFastConv::multiplySpectra(float *spectrumC, const float *spectrumA, const 
     fft->mergeRealImag(spectrumC, realC, imagC);
 }
 
-void CFastConv::processFreqDomain(float *output, const float *input, int length) {
+void FreqConvolution::process(float *output, const float *input, int length) {
     float convolution[blockLength*2];
     for (int i = 0; i < length; i++) {
         inputBuffer->putPostInc(input[i]);
@@ -133,16 +112,54 @@ void CFastConv::processFreqDomain(float *output, const float *input, int length)
     }
 }
 
-int CFastConv::getTailLength() {
-    // NOTE: The tail is the length of the impulse response minus one,
-    // even if the user has provided fewer than `impulseResponse.size()` input samples.
-    int length = irLength - 1;
-    if (mode == kFreqDomain) {
-        // For frequency domain convolution, the tail also includes
-        // the block size due to latency (initial output of zeros).
-        length += blockLength;
+int FreqConvolution::getTailLength() {
+    // For frequency domain convolution, the tail also includes
+    // the block size due to latency (initial output of zeros).
+    return tailLength;
+}
+
+CFastConv::CFastConv() {
+}
+
+CFastConv::~CFastConv() {
+    reset();
+}
+
+Error_t CFastConv::init(float *pfImpulseResponse, int iLengthOfIr, int iBlockLength /*= 8192*/, ConvCompMode_t eCompMode /*= kFreqDomain*/) {
+    irLength = iLengthOfIr;
+    mode = eCompMode;
+    if (mode == kTimeDomain) {
+        timeConv = std::make_unique<TimeConvolution>(pfImpulseResponse, iLengthOfIr);
+    } else {
+        freqConv = std::make_unique<FreqConvolution>(pfImpulseResponse, iLengthOfIr, iBlockLength);
     }
-    return length;
+    return Error_t::kNoError;
+}
+
+Error_t CFastConv::reset() {
+    timeConv.release();
+    freqConv.release();
+    return Error_t::kNoError;
+}
+
+Error_t CFastConv::process(float *pfOutputBuffer, const float *pfInputBuffer, int iLengthOfBuffers) {
+    if (mode == kTimeDomain) {
+        timeConv->process(pfOutputBuffer, pfInputBuffer, iLengthOfBuffers);
+    } else if (mode == kFreqDomain) {
+        freqConv->process(pfOutputBuffer, pfInputBuffer, iLengthOfBuffers);
+    } else {
+        return Error_t::kFunctionIllegalCallError;
+    }
+    return Error_t::kNoError;
+}
+
+int CFastConv::getTailLength() {
+    if (mode == kTimeDomain) {
+        return timeConv->getTailLength();
+    } else if (mode == kFreqDomain) {
+        return freqConv->getTailLength();
+    }
+    return -1;
 }
 
 Error_t CFastConv::flushBuffer(float* pfOutputBuffer) {

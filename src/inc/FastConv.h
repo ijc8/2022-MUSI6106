@@ -15,9 +15,27 @@ class TimeConvolution {
 public:
     TimeConvolution(const float *impulseResponse, int length);
     void process(float *output, const float *input, int length);
+    int getTailLength();
 private:
     std::vector<float> impulseResponse;
     CRingBuffer<float> history;
+};
+
+class FreqConvolution {
+public:
+    FreqConvolution(const float *impulseResponse, int length, int blockLength);
+    ~FreqConvolution();
+    void process(float *output, const float *input, int length);
+    int getTailLength();
+private:
+    void multiplySpectra(float *output, const float *a, const float *b);
+
+    CFft *fft = nullptr;
+    int blockLength, tailLength;
+    std::unique_ptr<CRingBuffer<float>> inputBuffer, outputBuffer;
+    std::unique_ptr<CRingBuffer<std::vector<float>>> inputBlockHistory;
+    std::vector<std::vector<float>> impulseResponseBlocks;
+    std::vector<float> saved;
 };
 
 /*! \brief interface for fast convolution
@@ -70,18 +88,8 @@ private:
     ConvCompMode_t mode;
 
     std::unique_ptr<TimeConvolution> timeConv;
+    std::unique_ptr<FreqConvolution> freqConv;
     int irLength;
-
-    // Only used for freq domain:
-    void processFreqDomain(float *output, const float *input, int length);
-    void multiplySpectra(float *output, const float *a, const float *b);
-
-    CFft *fft = nullptr;
-    int blockLength;
-    std::unique_ptr<CRingBuffer<float>> inputBuffer, outputBuffer;
-    std::unique_ptr<CRingBuffer<std::vector<float>>> inputBlockHistory;
-    std::vector<std::vector<float>> impulseResponseBlocks;
-    std::vector<float> saved;
 };
 
 
