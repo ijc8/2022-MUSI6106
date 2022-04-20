@@ -5,56 +5,49 @@
 #include "MUSI6106Config.h"
 
 #include "AudioFileIf.h"
-#include "Vibrato.h"
+#include "FastConv.h"
 
 using std::cout;
 using std::endl;
 
-// local function declarations
-void    showClInfo();
+void showClInfo() {
+    cout << "MUSI6106 Assignment Executable" << endl;
+    cout << "(c) 2014-2022 by Alexander Lerch" << endl;
+    cout << endl;
+    return;
+}
 
-/////////////////////////////////////////////////////////////////////////////////
-// main function
-int main(int argc, char* argv[])
-{
+int main(int argc, char* argv[]) {
+    std::string sInputFilePath, sOutputFilePath;
+    float delayInSec;
+    int delayInSamples;
 
-    std::string             sInputFilePath,                 //!< file paths
-        sOutputFilePath;
+    static const int kBlockSize = 1024;
+    long long iNumFrames = kBlockSize;
+    int iNumChannels;
 
-    static const int            kBlockSize = 1024;
-    long long                   iNumFrames = kBlockSize;
-    int                         iNumChannels;
+    clock_t time = 0;
 
-    float                       fModFrequencyInHz;
-    float                       fModWidthInSec;
+    float **ppfInputAudio = 0;
+    float **ppfOutputAudio = 0;
 
-    clock_t                     time = 0;
+    CAudioFileIf *phAudioFile = 0;
+    CAudioFileIf *phAudioOutputFile = 0;
 
-    float** ppfInputAudio = 0;
-    float** ppfOutputAudio = 0;
-
-    CAudioFileIf* phAudioFile = 0;
-    CAudioFileIf* phAudioOutputFile = 0;
-
-    CAudioFileIf::FileSpec_t    stFileSpec;
-
-    CVibrato* pCVibrato = 0;
+    CAudioFileIf::FileSpec_t stFileSpec;
 
     showClInfo();
 
-
     // command line args
-    if (argc < 5)
-    {
-        cout << "Incorrect number of arguments!" << endl;
+    if (argc < 4) {
+        cout << "Usage: " << argv[0] << " <input file> <output file> <delay in seconds>" << endl;
         return -1;
     }
     sInputFilePath = argv[1];
     sOutputFilePath = argv[2];
-    fModFrequencyInHz = atof(argv[3]);
-    fModWidthInSec = atof(argv[4]);
+    delayInSec = atof(argv[3]);
 
-    ///////////////////////////////////////////////////////////////////////////
+    // open audio files
     CAudioFileIf::create(phAudioFile);
     CAudioFileIf::create(phAudioOutputFile);
 
@@ -62,25 +55,23 @@ int main(int argc, char* argv[])
     phAudioFile->getFileSpec(stFileSpec);
     phAudioOutputFile->openFile(sOutputFilePath, CAudioFileIf::kFileWrite, &stFileSpec);
     iNumChannels = stFileSpec.iNumChannels;
-    if (!phAudioFile->isOpen())
-    {
+    if (!phAudioFile->isOpen()) {
         cout << "Input file open error!";
-
+        CAudioFileIf::destroy(phAudioFile);
+        CAudioFileIf::destroy(phAudioOutputFile);
+        return -1;
+    } else if (!phAudioOutputFile->isOpen()) {
+        cout << "Output file cannot be initialized!" << endl;
+        CAudioFileIf::destroy(phAudioFile);
+        CAudioFileIf::destroy(phAudioOutputFile);
+        return -1;
+    } else if (iNumChannels != 1) {
+        cout << "Only mono audio is supported." << endl;
         CAudioFileIf::destroy(phAudioFile);
         CAudioFileIf::destroy(phAudioOutputFile);
         return -1;
     }
-    else if (!phAudioOutputFile->isOpen())
-    {
-        cout << "Output file cannot be initialized!";
-
-        CAudioFileIf::destroy(phAudioFile);
-        CAudioFileIf::destroy(phAudioOutputFile);
-        return -1;
-    }
-    ////////////////////////////////////////////////////////////////////////////
-    CVibrato::create(pCVibrato);
-    pCVibrato->init(fModWidthInSec, stFileSpec.fSampleRateInHz, iNumChannels);
+    delayInSamples = delayInSec * stFileSpec.fSampleRateInHz;
 
     // allocate memory
     ppfInputAudio = new float* [stFileSpec.iNumChannels];
@@ -91,30 +82,32 @@ int main(int argc, char* argv[])
     for (int i = 0; i < stFileSpec.iNumChannels; i++)
         ppfOutputAudio[i] = new float[kBlockSize];
 
-    // Set parameters of vibrato
-    pCVibrato->setParam(CVibrato::kParamModFreqInHz, fModFrequencyInHz);
-    pCVibrato->setParam(CVibrato::kParamModWidthInS, fModWidthInSec);
+    // Setup reverb
+    // With this IR, this is essentially a very expensive comb filter...
+    int impulseResponseLength = delayInSamples + 1;
+    float impulseResponse[impulseResponseLength] = {0};
+    impulseResponse[0] = 1;
+    impulseResponse[impulseResponseLength - 1] = 1;
+    CFastConv fastConv;
+    fastConv.init(impulseResponse, impulseResponseLength, 0, CFastConv::kTimeDomain);
 
     // processing
-    while (!phAudioFile->isEof())
-    {
+    clock_t processingTime = 0;
+    while (!phAudioFile->isEof()) {
         phAudioFile->readData(ppfInputAudio, iNumFrames);
-        pCVibrato->process(ppfInputAudio, ppfOutputAudio, iNumFrames);
+        clock_t start = clock();
+        fastConv.process(ppfOutputAudio[0], ppfInputAudio[0], iNumFrames);
+        processingTime += clock() - start;
         phAudioOutputFile->writeData(ppfOutputAudio, iNumFrames);
     }
-    phAudioFile->getFileSpec(stFileSpec);
+    cout << "reading/writing done in: \t" << (float)(clock() - time) / CLOCKS_PER_SEC << " seconds." << endl;
+    cout << "time spent in process(): \t" << ((float)processingTime / CLOCKS_PER_SEC) << " seconds." << endl;
 
-
-    cout << "\nreading/writing done in: \t" << (clock() - time) * 1.F / CLOCKS_PER_SEC << " seconds." << endl;
-
-    //////////////////////////////////////////////////////////////////////////////
     // clean-up
     CAudioFileIf::destroy(phAudioFile);
     CAudioFileIf::destroy(phAudioOutputFile);
-    CVibrato::destroy(pCVibrato);
 
-    for (int i = 0; i < stFileSpec.iNumChannels; i++)
-    {
+    for (int i = 0; i < stFileSpec.iNumChannels; i++) {
         delete[] ppfInputAudio[i];
         delete[] ppfOutputAudio[i];
     }
@@ -125,16 +118,4 @@ int main(int argc, char* argv[])
 
     // all done
     return 0;
-
 }
-
-
-void     showClInfo()
-{
-    cout << "MUSI6106 Assignment Executable" << endl;
-    cout << "(c) 2014-2022 by Alexander Lerch" << endl;
-    cout << endl;
-
-    return;
-}
-

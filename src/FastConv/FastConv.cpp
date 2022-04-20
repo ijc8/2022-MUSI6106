@@ -107,110 +107,108 @@ void CFastConv::processFreqDomain(float *output, const float *input, int length)
     }
 }
 
-void CFastConv::_processFreqDomain(float *output, const float *input, int length) {
-    int IdxWrite = 0;
-    float* pfInputBlockBuffer = new float[2 * blockLength]{ 0 };
-    int NumofBlock = static_cast<int>(std::ceil(impulseResponse.size()) / static_cast<float>(blockLength));
-    int BlockIdxRead = NumofBlock - 1;
-    float** ppfOutputBlockBuffer = new float* [NumofBlock];
-    float* pfReal_BlockFFTCurrent = new float[blockLength + 1];
-    float* pfImage_BlockFFTCurrent = new float[blockLength + 1];
-    CFft* pforFFT = 0;
-    CFft::createInstance(pforFFT);
-    pforFFT->initInstance(blockLength);
-    CFft::complex_t* pfComplexNum = new float[2 * blockLength];
-    float* pfReal_FFT = new float[blockLength + 1];
-    float* pfImage_FFT = new float[blockLength + 1];
-    float* pf_IFFT = new float[2 * blockLength]{ 0 };
-    int IdxBlock_Write = 0;
-    float** ppfReal_IRFreq = new float* [NumofBlock];
-    float** ppfImage_IRFreq = new float* [NumofBlock];
-    for (int i = 0; i < NumofBlock; i++) {
-        ppfReal_IRFreq[i] = new float[blockLength + 1]{ 0 };
-        ppfImage_IRFreq[i] = new float[blockLength + 1]{ 0 };
-        ppfOutputBlockBuffer[i] = new float[blockLength] {0};
-        for (int j = 0; j < blockLength; j++) {
-            if (i * blockLength + j < impulseResponse.size())
-                pf_IFFT[j] = impulseResponse[i * blockLength + j];
-            else
-                pf_IFFT[j] = 0;
-        }
+// void CFastConv::processFreqDomain(float *output, const float *input, int length) {
+//     int IdxWrite = 0;
+//     float* pfInputBlockBuffer = new float[2 * blockLength]{ 0 };
+//     int NumofBlock = static_cast<int>(std::ceil(impulseResponse.size()) / static_cast<float>(blockLength));
+//     int BlockIdxRead = NumofBlock - 1;
+//     float** ppfOutputBlockBuffer = new float* [NumofBlock];
+//     float* pfReal_BlockFFTCurrent = new float[blockLength + 1];
+//     float* pfImage_BlockFFTCurrent = new float[blockLength + 1];
+//     CFft* pforFFT = 0;
+//     CFft::createInstance(pforFFT);
+//     pforFFT->initInstance(blockLength);
+//     CFft::complex_t* pfComplexNum = new float[2 * blockLength];
+//     float* pfReal_FFT = new float[blockLength + 1];
+//     float* pfImage_FFT = new float[blockLength + 1];
+//     float* pf_IFFT = new float[2 * blockLength]{ 0 };
+//     int IdxBlock_Write = 0;
+//     float** ppfReal_IRFreq = new float* [NumofBlock];
+//     float** ppfImage_IRFreq = new float* [NumofBlock];
+//     for (int i = 0; i < NumofBlock; i++) {
+//         ppfReal_IRFreq[i] = new float[blockLength + 1]{ 0 };
+//         ppfImage_IRFreq[i] = new float[blockLength + 1]{ 0 };
+//         ppfOutputBlockBuffer[i] = new float[blockLength] {0};
+//         for (int j = 0; j < blockLength; j++) {
+//             if (i * blockLength + j < impulseResponse.size())
+//                 pf_IFFT[j] = impulseResponse[i * blockLength + j];
+//             else
+//                 pf_IFFT[j] = 0;
+//         }
 
-        for (int j = blockLength; j < 2 * blockLength; j++)
-            pf_IFFT[j] = 0;
+//         for (int j = blockLength; j < 2 * blockLength; j++)
+//             pf_IFFT[j] = 0;
 
-        pforFFT->doFft(pfComplexNum, pf_IFFT);
-        pforFFT->splitRealImag(ppfReal_IRFreq[i], ppfImage_IRFreq[i], pfComplexNum);
-    }
+//         pforFFT->doFft(pfComplexNum, pf_IFFT);
+//         pforFFT->splitRealImag(ppfReal_IRFreq[i], ppfImage_IRFreq[i], pfComplexNum);
+//     }
 
-    for (int i = 0; i < length; i++) {
-        pfInputBlockBuffer[IdxWrite + blockLength] = input[i];
+//     for (int i = 0; i < length; i++) {
+//         pfInputBlockBuffer[IdxWrite + blockLength] = input[i];
 
-        output[i] = ppfOutputBlockBuffer[BlockIdxRead][IdxWrite];
+//         output[i] = ppfOutputBlockBuffer[BlockIdxRead][IdxWrite];
 
-        IdxWrite++;
+//         IdxWrite++;
 
-        if (IdxWrite == blockLength) {
-            IdxWrite = 0;
-            for (int j = 0; j < blockLength; j++) {
-                ppfOutputBlockBuffer[BlockIdxRead][j] = 0;
-            }
-            pforFFT->doFft(pfComplexNum, pfInputBlockBuffer);
-            pforFFT->splitRealImag(pfReal_BlockFFTCurrent, pfImage_BlockFFTCurrent, pfComplexNum);
-            for (int j = 0; j < NumofBlock; j++) {
-                for (int i = 0; i <= blockLength; i++) {
-                    pfReal_FFT[i] = (pfReal_BlockFFTCurrent[i] * ppfReal_IRFreq[j][i] - pfImage_BlockFFTCurrent[i] * ppfImage_IRFreq[j][i]) * 2 * blockLength;
-                    pfImage_FFT[i] = (pfReal_BlockFFTCurrent[i] * ppfImage_IRFreq[j][i] + pfImage_BlockFFTCurrent[i] * ppfReal_IRFreq[j][i]) * 2 * blockLength;
-                }
-                pforFFT->mergeRealImag(pfComplexNum, pfReal_FFT, pfImage_FFT);
-                pforFFT->doInvFft(pf_IFFT, pfComplexNum);
-                const int l_iWriteBlockNum = (IdxBlock_Write + j) % NumofBlock;
-                for (int k = 0; k < blockLength; k++) {
-                    ppfOutputBlockBuffer[l_iWriteBlockNum][k] += pf_IFFT[k + blockLength];
-                }
-            }
-            for (int j = 0; j < blockLength; j++) {
-                pfInputBlockBuffer[j] = pfInputBlockBuffer[j + blockLength];
-            }
+//         if (IdxWrite == blockLength) {
+//             IdxWrite = 0;
+//             for (int j = 0; j < blockLength; j++) {
+//                 ppfOutputBlockBuffer[BlockIdxRead][j] = 0;
+//             }
+//             pforFFT->doFft(pfComplexNum, pfInputBlockBuffer);
+//             pforFFT->splitRealImag(pfReal_BlockFFTCurrent, pfImage_BlockFFTCurrent, pfComplexNum);
+//             for (int j = 0; j < NumofBlock; j++) {
+//                 for (int i = 0; i <= blockLength; i++) {
+//                     pfReal_FFT[i] = (pfReal_BlockFFTCurrent[i] * ppfReal_IRFreq[j][i] - pfImage_BlockFFTCurrent[i] * ppfImage_IRFreq[j][i]) * 2 * blockLength;
+//                     pfImage_FFT[i] = (pfReal_BlockFFTCurrent[i] * ppfImage_IRFreq[j][i] + pfImage_BlockFFTCurrent[i] * ppfReal_IRFreq[j][i]) * 2 * blockLength;
+//                 }
+//                 pforFFT->mergeRealImag(pfComplexNum, pfReal_FFT, pfImage_FFT);
+//                 pforFFT->doInvFft(pf_IFFT, pfComplexNum);
+//                 const int l_iWriteBlockNum = (IdxBlock_Write + j) % NumofBlock;
+//                 for (int k = 0; k < blockLength; k++) {
+//                     ppfOutputBlockBuffer[l_iWriteBlockNum][k] += pf_IFFT[k + blockLength];
+//                 }
+//             }
+//             for (int j = 0; j < blockLength; j++) {
+//                 pfInputBlockBuffer[j] = pfInputBlockBuffer[j + blockLength];
+//             }
 
-            BlockIdxRead = IdxBlock_Write;
-            IdxBlock_Write = (IdxBlock_Write + 1) % NumofBlock;
-        }
-    }
+//             BlockIdxRead = IdxBlock_Write;
+//             IdxBlock_Write = (IdxBlock_Write + 1) % NumofBlock;
+//         }
+//     }
 
-    for (int i = 0; i < NumofBlock; i++) {
-        delete[] ppfOutputBlockBuffer[i];
-        delete[] ppfReal_IRFreq[i];
-        delete[] ppfImage_IRFreq[i];
-    }
-    delete[] ppfReal_IRFreq;
-    delete[] ppfImage_IRFreq;
-    delete[] pfInputBlockBuffer;
-    delete[] ppfOutputBlockBuffer;
+//     for (int i = 0; i < NumofBlock; i++) {
+//         delete[] ppfOutputBlockBuffer[i];
+//         delete[] ppfReal_IRFreq[i];
+//         delete[] ppfImage_IRFreq[i];
+//     }
+//     delete[] ppfReal_IRFreq;
+//     delete[] ppfImage_IRFreq;
+//     delete[] pfInputBlockBuffer;
+//     delete[] ppfOutputBlockBuffer;
 
-    ppfReal_IRFreq = 0;
-    ppfImage_IRFreq = 0;
-    pfInputBlockBuffer = 0;
-    ppfOutputBlockBuffer = 0;
+//     ppfReal_IRFreq = 0;
+//     ppfImage_IRFreq = 0;
+//     pfInputBlockBuffer = 0;
+//     ppfOutputBlockBuffer = 0;
 
-    delete[] pf_IFFT;
-    delete[] pfReal_FFT;
-    delete[] pfImage_FFT;
-    delete[] pfReal_BlockFFTCurrent;
-    delete[] pfImage_BlockFFTCurrent;
-    pf_IFFT = 0;
-    pfReal_FFT = 0;
-    pfImage_FFT = 0;
-
-
-    delete[] pfComplexNum;
-    pfComplexNum = 0;
-
-    CFft::destroyInstance(pforFFT);
-    pforFFT = 0;
+//     delete[] pf_IFFT;
+//     delete[] pfReal_FFT;
+//     delete[] pfImage_FFT;
+//     delete[] pfReal_BlockFFTCurrent;
+//     delete[] pfImage_BlockFFTCurrent;
+//     pf_IFFT = 0;
+//     pfReal_FFT = 0;
+//     pfImage_FFT = 0;
 
 
-}
+//     delete[] pfComplexNum;
+//     pfComplexNum = 0;
+
+//     CFft::destroyInstance(pforFFT);
+//     pforFFT = 0;
+// }
 
 Error_t CFastConv::flushBuffer(float* pfOutputBuffer) {
     // NOTE: The tail is the length of the impulse response minus one,
