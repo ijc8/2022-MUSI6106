@@ -29,7 +29,9 @@ int TimeConvolution::getTailLength() const {
 }
 
 FreqConvolution::FreqConvolution(const float *impulseResponse, int length, int blockLength)
-: blockLength(blockLength), tailLength(length - 1 + blockLength), inputBuffer(blockLength + 1), outputBuffer(blockLength + 1),
+: blockLength(blockLength), tailLength(length - 1 + blockLength),
+  acc(blockLength*2), saved(blockLength),
+  inputBuffer(blockLength + 1), outputBuffer(blockLength + 1),
   numBlocks((int)ceil((float)length / blockLength)), inputBlockHistory(numBlocks) {
     CFft::createInstance(fft);
     fft->initInstance(blockLength*2, 1, CFft::kWindowHann, CFft::kNoWindow);
@@ -45,7 +47,6 @@ FreqConvolution::FreqConvolution(const float *impulseResponse, int length, int b
         memcpy(&impulseResponseBlocks[i][0], &impulseResponse[i * blockLength], sizeof(float) * thisBlockLength);
         fft->doFft(impulseResponseBlocks[i].data(), impulseResponseBlocks[i].data());
     }
-    saved.resize(blockLength);
 }
 
 FreqConvolution::~FreqConvolution() {
@@ -83,35 +84,35 @@ FreqConvolution::~FreqConvolution() {
 //     fft->mergeRealImag(spectrumC, realA.data(), imagA.data());
 // }
 
-void FreqConvolution::multiplySpectra(float *spectrumC, const float *spectrumA, const float *spectrumB) {
+static inline void addMultiplySpectra(float *output, const float *spectrumA, const float *spectrumB, int blockLength) {
     float scale = blockLength * 2;
     // Spectrum layout: re(0),re(1),re(2),...,re(size/2),im(size/2-1),...,im(1)
-    spectrumC[0] = (spectrumA[0] * spectrumB[0]) * scale;
-    spectrumC[blockLength] = (spectrumA[blockLength] * spectrumB[blockLength]) * scale;
+    output[0] += (spectrumA[0] * spectrumB[0]) * scale;
+    output[blockLength] += (spectrumA[blockLength] * spectrumB[blockLength]) * scale;
     for (int i = 1; i < blockLength; i++) {
         float realA = spectrumA[i];
         float imagA = spectrumA[blockLength*2-i];
         float realB = spectrumB[i];
         float imagB = spectrumB[blockLength*2-i];
-        spectrumC[i] = (realA * realB - imagA * imagB) * scale; // Real part
-        spectrumC[blockLength*2-i] = (realA * imagB + imagA * realB) * scale; // Imaginary part
+        output[i] += (realA * realB - imagA * imagB) * scale; // Real part
+        output[blockLength*2-i] += (realA * imagB + imagA * realB) * scale; // Imaginary part
     }
 }
 
 void FreqConvolution::process(float *output, const float *input, int length) {
-    std::vector<float> convolution(blockLength*2);
     for (int i = 0; i < length; i++) {
         inputBuffer.putPostInc(input[i]);
         if (inputBuffer.getNumValuesInBuffer() >= blockLength) {
+            // We have another full input block for processing.
+            // Take the FFT, add it to our ring buffer.
             std::vector<float> inputBlock(blockLength*2);
             inputBuffer.getPostInc(inputBlock.data(), blockLength);
             fft->doFft(inputBlock.data(), inputBlock.data());
             inputBlockHistory.putPostInc(inputBlock);
             // Sum results from circular convolutions (equivalent to linear convolutions due to zero-padding.)
-            std::vector<float> acc(blockLength*2);
+            std::fill(acc.begin(), acc.end(), 0);
             for (int j = 0; j < numBlocks; j++) {
-                multiplySpectra(convolution.data(), impulseResponseBlocks[j].data(), inputBlockHistory.get(-j).data());
-                CVectorFloat::add_I(acc.data(), convolution.data(), blockLength*2);
+                addMultiplySpectra(acc.data(), impulseResponseBlocks[j].data(), inputBlockHistory.get(-j).data(), blockLength);
             }
             // Fourier Transform is linear, so we can just do the IFFT once after summing all the spectra.
             fft->doInvFft(acc.data(), acc.data());

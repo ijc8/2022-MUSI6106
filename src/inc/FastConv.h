@@ -35,14 +35,12 @@ public:
     void process(float *output, const float *input, int length) override;
     int getTailLength() const override;
 private:
-    void multiplySpectra(float *output, const float *a, const float *b);
-
     CFft *fft = nullptr;
     int blockLength, tailLength, numBlocks;
     CRingBuffer<float> inputBuffer, outputBuffer;
     CRingBuffer<std::vector<float>> inputBlockHistory;
     std::vector<std::vector<float>> impulseResponseBlocks;
-    std::vector<float> saved;
+    std::vector<float> acc, saved;
 };
 
 /*! \brief interface for fast convolution
@@ -58,8 +56,8 @@ public:
         kNumConvCompModes
     };
 
-    CFastConv(void);
-    virtual ~CFastConv(void);
+    CFastConv();
+    virtual ~CFastConv();
 
     /*! initializes the class with the impulse response and the block length
     \param pfImpulseResponse impulse response samples (mono only)
@@ -72,7 +70,7 @@ public:
     /*! resets all internal class members
     \return Error_t
     */
-    Error_t reset ();
+    Error_t reset();
 
     /*! computes the output with reverb
     \param pfOutputBuffer (mono)
