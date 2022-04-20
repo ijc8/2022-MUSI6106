@@ -11,6 +11,15 @@
 #include "ErrorDef.h"
 #include "Fft.h"
 
+class TimeConvolution {
+public:
+    TimeConvolution(const float *impulseResponse, int length);
+    void process(float *output, const float *input, int length);
+private:
+    std::vector<float> impulseResponse;
+    CRingBuffer<float> history;
+};
+
 /*! \brief interface for fast convolution
 */
 class CFastConv
@@ -59,16 +68,12 @@ public:
 
 private:
     ConvCompMode_t mode;
-    // Question 1: Can we assume the pfImpulseResponse pointer the user gives us remains valid?
-    // Or should we copy their provided data into our own buffer as a precaution?
-    // Question 2: Am I correct in thinking iBlockLength is unused in time-domain mode?
-    std::vector<float> impulseResponse;
-    std::unique_ptr<CRingBuffer<float>> history;
 
-    void processTimeDomain(float *output, const float *input, int length);
-    void processFreqDomain(float *output, const float *input, int length);
+    std::unique_ptr<TimeConvolution> timeConv;
+    int irLength;
 
     // Only used for freq domain:
+    void processFreqDomain(float *output, const float *input, int length);
     void multiplySpectra(float *output, const float *a, const float *b);
 
     CFft *fft = nullptr;

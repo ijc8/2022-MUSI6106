@@ -6,6 +6,22 @@
 #include "Fft.h"
 #include "Vector.h"
 
+TimeConvolution::TimeConvolution(const float *impulseResponse, int length)
+: impulseResponse(impulseResponse, &impulseResponse[length]), history(length) {
+}
+
+void TimeConvolution::process(float *output, const float *input, int length) {
+    for (int i = 0; i < length; i++) {
+        history.putPostInc(input[i]);
+        float acc = 0;
+        for (int j = 0; j < impulseResponse.size(); j++) {
+            acc += impulseResponse[j] * history.get(-j);
+        }
+        output[i] = acc;
+        history.getPostInc();
+    }
+}
+
 CFastConv::CFastConv() {
 }
 
@@ -14,11 +30,11 @@ CFastConv::~CFastConv() {
 }
 
 Error_t CFastConv::init(float *pfImpulseResponse, int iLengthOfIr, int iBlockLength /*= 8192*/, ConvCompMode_t eCompMode /*= kFreqDomain*/) {
-    impulseResponse.assign(pfImpulseResponse, &pfImpulseResponse[iLengthOfIr]);
     blockLength = iBlockLength;
+    irLength = iLengthOfIr;
     mode = eCompMode;
     if (mode == kTimeDomain) {
-        history = std::make_unique<CRingBuffer<float>>(iLengthOfIr);
+        timeConv = std::make_unique<TimeConvolution>(pfImpulseResponse, iLengthOfIr);
     } else {
         CFft::createInstance(fft);
         fft->initInstance(blockLength*2, 1, CFft::kWindowHann, CFft::kNoWindow);
@@ -38,7 +54,7 @@ Error_t CFastConv::init(float *pfImpulseResponse, int iLengthOfIr, int iBlockLen
             memcpy(&impulseResponseBlocks[i][0], &pfImpulseResponse[i * blockLength], sizeof(float) * thisBlockLength);
             fft->doFft(impulseResponseBlocks[i].data(), impulseResponseBlocks[i].data());
         }
-        saved.resize(blockLength*2);
+        saved.resize(blockLength);
     }
     return Error_t::kNoError;
 }
@@ -51,25 +67,13 @@ Error_t CFastConv::reset() {
 
 Error_t CFastConv::process(float *pfOutputBuffer, const float *pfInputBuffer, int iLengthOfBuffers) {
     if (mode == kTimeDomain) {
-        processTimeDomain(pfOutputBuffer, pfInputBuffer, iLengthOfBuffers);
+        timeConv->process(pfOutputBuffer, pfInputBuffer, iLengthOfBuffers);
     } else if (mode == kFreqDomain) {
         processFreqDomain(pfOutputBuffer, pfInputBuffer, iLengthOfBuffers);
     } else {
         return Error_t::kFunctionIllegalCallError;
     }
     return Error_t::kNoError;
-}
-
-void CFastConv::processTimeDomain(float *output, const float *input, int length) {
-    for (int i = 0; i < length; i++) {
-        history->putPostInc(input[i]);
-        float acc = 0;
-        for (int j = 0; j < impulseResponse.size(); j++) {
-            acc += impulseResponse[j] * history->get(-j);
-        }
-        output[i] = acc;
-        history->getPostInc();
-    }
 }
 
 // Time-domain implementation of circular convolution, for reference:
@@ -109,10 +113,10 @@ void CFastConv::processFreqDomain(float *output, const float *input, int length)
             fft->doFft(inputBlock.data(), inputBlock.data());
             inputBlockHistory->putPostInc(inputBlock);
             int numBlocks = impulseResponseBlocks.size();
+            // Sum results from circular convolutions (equivalent to linear convolutions due to zero-padding.)
             float acc[blockLength*2] = {0};
             for (int j = 0; j < numBlocks; j++) {
                 multiplySpectra(convolution, impulseResponseBlocks[j].data(), inputBlockHistory->get(-j).data());
-                // Add the results of the circular convolution. (Due to zero-padding, should be equivalent to linear convolution.)
                 CVectorFloat::add_I(acc, convolution, blockLength*2);
             }
             // Fourier Transform is linear, so we can just do the IFFT once after summing all the spectra.
@@ -132,7 +136,7 @@ void CFastConv::processFreqDomain(float *output, const float *input, int length)
 int CFastConv::getTailLength() {
     // NOTE: The tail is the length of the impulse response minus one,
     // even if the user has provided fewer than `impulseResponse.size()` input samples.
-    int length = impulseResponse.size() - 1;
+    int length = irLength - 1;
     if (mode == kFreqDomain) {
         // For frequency domain convolution, the tail also includes
         // the block size due to latency (initial output of zeros).
