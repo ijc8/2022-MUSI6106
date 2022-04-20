@@ -37,6 +37,7 @@ Error_t CFastConv::init(float *pfImpulseResponse, int iLengthOfIr, int iBlockLen
             int thisBlockLength = std::min(blockLength, iLengthOfIr - i * blockLength);
             impulseResponseBlocks[i].resize(blockLength * 2);
             memcpy(&impulseResponseBlocks[i][0], &pfImpulseResponse[i * blockLength], sizeof(float) * thisBlockLength);
+            fft->doFft(impulseResponseBlocks[i].data(), impulseResponseBlocks[i].data());
         }
         saved.resize(blockLength*2);
     }
@@ -83,18 +84,13 @@ void CFastConv::processTimeDomain(float *output, const float *input, int length)
 //     }
 // }
 
-void CFastConv::circularConvolve(float *output, const float *a, const float *b, int length) {
-
+void CFastConv::circularConvolve(float *output, const float *spectrumA, const float *spectrumB, int length) {
     assert(length == blockLength * 2);
 
-    float spectrumA[blockLength*2];
     float realA[blockLength+1], imagA[blockLength+1];
-    fft->doFft(spectrumA, a);
     fft->splitRealImag(realA, imagA, spectrumA);
 
-    float spectrumB[blockLength*2];
     float realB[blockLength+1], imagB[blockLength+1];
-    fft->doFft(spectrumB, b);
     fft->splitRealImag(realB, imagB, spectrumB);
 
     float scale = blockLength * 2;
@@ -115,6 +111,7 @@ void CFastConv::processFreqDomain(float *output, const float *input, int length)
         if (inputBuffer->getNumValuesInBuffer() >= blockLength) {
             std::vector<float> inputBlock(blockLength*2);
             inputBuffer->getPostInc(inputBlock.data(), blockLength);
+            fft->doFft(inputBlock.data(), inputBlock.data());
             inputBlockHistory->putPostInc(inputBlock);
             int wtf = impulseResponseBlocks.size();
             float acc[blockLength] = {0};
