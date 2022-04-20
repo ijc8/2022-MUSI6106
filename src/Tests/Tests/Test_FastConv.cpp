@@ -66,9 +66,10 @@ namespace fastconv_test {
         fastConv->process(output, input, inputLength);
 
         // Check tail correctness.
-        float tail[irLength - 1];
+        int tailLength = fastConv->getTailLength();
+        float tail[tailLength];
         fastConv->flushBuffer(tail);
-        for (int i = 0; i < irLength - 1; i++) {
+        for (int i = 0; i < tailLength; i++) {
             int index = i + inputLength - shift;
             EXPECT_EQ(tail[i], index < irLength ? impulseResponse[index] : 0);
         }
@@ -141,7 +142,7 @@ namespace fastconv_test {
         fastConv->process(output, input, inputLength);
 
         // Check tail correctness.
-        int tailLength = irLength - 1 + blockLength;
+        int tailLength = fastConv->getTailLength();
         float tail[tailLength];
         fastConv->flushBuffer(tail);
         for (int i = 0; i < tailLength; i++) {
@@ -178,6 +179,8 @@ namespace fastconv_test {
             EXPECT_EQ(output[i], i < shift + blockLength ? 0 : input[i - (shift + blockLength)]);
         }
     }
+
+    // TODO: Add test to confirm that time and frequency domain results are (nearly) equal.
 }
 
 #endif //WITH_TESTS

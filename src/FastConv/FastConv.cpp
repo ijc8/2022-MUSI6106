@@ -211,7 +211,7 @@ void CFastConv::processFreqDomain(float *output, const float *input, int length)
 //     pforFFT = 0;
 // }
 
-Error_t CFastConv::flushBuffer(float* pfOutputBuffer) {
+int CFastConv::getTailLength() {
     // NOTE: The tail is the length of the impulse response minus one,
     // even if the user has provided fewer than `impulseResponse.size()` input samples.
     int length = impulseResponse.size() - 1;
@@ -220,6 +220,11 @@ Error_t CFastConv::flushBuffer(float* pfOutputBuffer) {
         // the block size due to latency (initial output of zeros).
         length += blockLength;
     }
+    return length;
+}
+
+Error_t CFastConv::flushBuffer(float* pfOutputBuffer) {
+    int length = getTailLength();
     float zeros[length] = {0};
     process(pfOutputBuffer, zeros, length);
     return Error_t::kNoError;

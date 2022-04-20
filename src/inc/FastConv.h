@@ -47,7 +47,9 @@ public:
     */
     Error_t process(float* pfOutputBuffer, const float* pfInputBuffer, int iLengthOfBuffers);
 
-    /*! return the 'tail' after processing has finished (identical to feeding in zeros
+    int getTailLength();
+
+    /*! return the 'tail' after processing has finished (identical to feeding in zeros)
     \param pfOutputBuffer (mono)
     \return Error_t
     */

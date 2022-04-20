@@ -101,9 +101,17 @@ int main(int argc, char* argv[]) {
         processingTime += clock() - start;
         phAudioOutputFile->writeData(ppfOutputAudio, iNumFrames);
     }
-    // TODO: flush buffer
+    // Flush reverb tail.
+    int tailLength = fastConv.getTailLength();
+    float tail[tailLength];
+    clock_t start = clock();
+    fastConv.flushBuffer(tail);
+    processingTime += clock() - start;
+    float *wrapper[] = { tail };
+    phAudioOutputFile->writeData(wrapper, tailLength);
+
     cout << "reading/writing done in: \t" << (float)(clock() - time) / CLOCKS_PER_SEC << " seconds." << endl;
-    cout << "time spent in process(): \t" << ((float)processingTime / CLOCKS_PER_SEC) << " seconds." << endl;
+    cout << "time in process/flushBuffer: \t" << ((float)processingTime / CLOCKS_PER_SEC) << " seconds." << endl;
 
     // clean-up
     CAudioFileIf::destroy(phAudioFile);
