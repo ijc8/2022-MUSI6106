@@ -63,6 +63,14 @@ private:
 
     void processTimeDomain(float *output, const float *input, int length);
     void processFreqDomain(float *output, const float *input, int length);
+    // Debugging this:
+    void _processFreqDomain(float *output, const float *input, int length);
+
+    // Only used for freq domain:
+    int blockLength;
+    std::unique_ptr<CRingBuffer<float>> inputBuffer, outputBuffer;
+    std::unique_ptr<CRingBuffer<std::vector<float>>> inputBlockHistory;
+    std::vector<std::vector<float>> impulseResponseBlocks;
 };
 
 

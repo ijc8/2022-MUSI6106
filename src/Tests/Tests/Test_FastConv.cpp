@@ -116,6 +116,7 @@ namespace fastconv_test {
         float input[inputLength] = {0};
         input[shift] = 1;
         float output[inputLength];
+        // Discard first `blockSize` samples.
         fastConv->process(output, input, inputLength);
         fastConv->process(output, input, inputLength);
         for (int i = 0; i < inputLength; i++) {

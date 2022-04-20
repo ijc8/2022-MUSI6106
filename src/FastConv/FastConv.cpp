@@ -1,8 +1,10 @@
 
 #include <cassert>
+#include <iostream>
 
 #include "FastConv.h"
 #include "Fft.h"
+#include "Vector.h"
 
 CFastConv::CFastConv() {
 }
@@ -13,8 +15,27 @@ CFastConv::~CFastConv() {
 
 Error_t CFastConv::init(float *pfImpulseResponse, int iLengthOfIr, int iBlockLength /*= 8192*/, ConvCompMode_t eCompMode /*= kFreqDomain*/) {
     impulseResponse.assign(pfImpulseResponse, &pfImpulseResponse[iLengthOfIr]);
-    history = std::make_unique<CRingBuffer<float>>(iLengthOfIr);
+    blockLength = iBlockLength;
     mode = eCompMode;
+    if (mode == kTimeDomain) {
+        history = std::make_unique<CRingBuffer<float>>(iLengthOfIr);
+    } else {
+        inputBuffer = std::make_unique<CRingBuffer<float>>(blockLength + 1);
+        outputBuffer = std::make_unique<CRingBuffer<float>>(blockLength + 1);
+        for (int i = 0; i < blockLength; i++) {
+            outputBuffer->putPostInc(0);
+        }
+        int numBlocks = (int)ceil((float)iLengthOfIr / iBlockLength);
+        inputBlockHistory = std::make_unique<CRingBuffer<std::vector<float>>>(numBlocks);
+        std::vector<float> tmp(blockLength*2);
+        impulseResponseBlocks.resize(numBlocks);
+        for (int i = 0; i < numBlocks; i++) {
+            inputBlockHistory->putPostInc(tmp);
+            int thisBlockLength = std::min(blockLength, iLengthOfIr - i * blockLength);
+            impulseResponseBlocks[i].resize(blockLength * 2);
+            memcpy(&impulseResponseBlocks[i][0], &pfImpulseResponse[i * blockLength], sizeof(float) * thisBlockLength);
+        }
+    }
     return Error_t::kNoError;
 }
 
@@ -47,80 +68,104 @@ void CFastConv::processTimeDomain(float *output, const float *input, int length)
     }
 }
 
+void circularConvolve(float *output, const float *a, const float *b, int length) {
+    for (int i = 0; i < length; i++) {
+        float acc = 0;
+        for (int j = 0; j < length; j++) {
+            acc += a[j] * b[(i - j + length) % length];
+        }
+        output[i] = acc;
+    }
+}
+
 void CFastConv::processFreqDomain(float *output, const float *input, int length) {
-    int BlockLength = 32;
+    float convolution[length*2];
+    for (int i = 0; i < length; i++) {
+        inputBuffer->putPostInc(input[i]);
+        if (inputBuffer->getNumValuesInBuffer() >= blockLength) {
+            std::vector<float> inputBlock(blockLength*2);
+            inputBuffer->get(inputBlock.data(), blockLength);
+            inputBlockHistory->putPostInc(inputBlock);
+            int wtf = impulseResponseBlocks.size();
+            float acc[blockLength] = {0};
+            for (int j = 0; j < wtf; j++) {
+                circularConvolve(convolution, impulseResponseBlocks[j].data(), inputBlockHistory->get(-j).data(), blockLength*2);
+                // Add the first half of the circular convolution.
+                CVectorFloat::add_I(acc, convolution, blockLength);
+            }
+            for (int k = 0; k < blockLength; k++) {
+                outputBuffer->putPostInc(acc[k]);
+            }
+            inputBlockHistory->getPostInc();
+        }
+        output[i] = outputBuffer->getPostInc();
+    }
+}
+
+void CFastConv::_processFreqDomain(float *output, const float *input, int length) {
     int IdxWrite = 0;
-    float* pfInputBlockBuffer = new float[2 * BlockLength]{ 0 };
-    int NumofBlock = static_cast<int>(std::ceil(impulseResponse.size()) / static_cast<float>(BlockLength));
+    float* pfInputBlockBuffer = new float[2 * blockLength]{ 0 };
+    int NumofBlock = static_cast<int>(std::ceil(impulseResponse.size()) / static_cast<float>(blockLength));
     int BlockIdxRead = NumofBlock - 1;
     float** ppfOutputBlockBuffer = new float* [NumofBlock];
-    float* pfReal_BlockFFTCurrent = new float[BlockLength + 1];
-    float* pfImage_BlockFFTCurrent = new float[BlockLength + 1];
+    float* pfReal_BlockFFTCurrent = new float[blockLength + 1];
+    float* pfImage_BlockFFTCurrent = new float[blockLength + 1];
     CFft* pforFFT = 0;
     CFft::createInstance(pforFFT);
-    pforFFT->initInstance(BlockLength);
-    CFft::complex_t* pfComplexNum = new float[2 * BlockLength];
-    float* pfReal_FFT = new float[BlockLength + 1];
-    float* pfImage_FFT = new float[BlockLength + 1];
-    float* pf_IFFT = new float[2 * BlockLength]{ 0 };
+    pforFFT->initInstance(blockLength);
+    CFft::complex_t* pfComplexNum = new float[2 * blockLength];
+    float* pfReal_FFT = new float[blockLength + 1];
+    float* pfImage_FFT = new float[blockLength + 1];
+    float* pf_IFFT = new float[2 * blockLength]{ 0 };
     int IdxBlock_Write = 0;
     float** ppfReal_IRFreq = new float* [NumofBlock];
     float** ppfImage_IRFreq = new float* [NumofBlock];
-    for (int i = 0; i < NumofBlock; i++)
-    {
-        ppfReal_IRFreq[i] = new float[BlockLength + 1]{ 0 };
-        ppfImage_IRFreq[i] = new float[BlockLength + 1]{ 0 };
-        ppfOutputBlockBuffer[i] = new float[BlockLength] {0};
-        for (int j = 0; j < BlockLength; j++)
-        {
-            if (i * BlockLength + j < impulseResponse.size())
-                pf_IFFT[j] = impulseResponse[i * BlockLength + j];
+    for (int i = 0; i < NumofBlock; i++) {
+        ppfReal_IRFreq[i] = new float[blockLength + 1]{ 0 };
+        ppfImage_IRFreq[i] = new float[blockLength + 1]{ 0 };
+        ppfOutputBlockBuffer[i] = new float[blockLength] {0};
+        for (int j = 0; j < blockLength; j++) {
+            if (i * blockLength + j < impulseResponse.size())
+                pf_IFFT[j] = impulseResponse[i * blockLength + j];
             else
                 pf_IFFT[j] = 0;
         }
 
-        for (int j = BlockLength; j < 2 * BlockLength; j++)
+        for (int j = blockLength; j < 2 * blockLength; j++)
             pf_IFFT[j] = 0;
 
         pforFFT->doFft(pfComplexNum, pf_IFFT);
         pforFFT->splitRealImag(ppfReal_IRFreq[i], ppfImage_IRFreq[i], pfComplexNum);
     }
 
-    for (int i = 0; i < length; i++)
-    {
-        pfInputBlockBuffer[IdxWrite + BlockLength] = input[i];
+    for (int i = 0; i < length; i++) {
+        pfInputBlockBuffer[IdxWrite + blockLength] = input[i];
 
         output[i] = ppfOutputBlockBuffer[BlockIdxRead][IdxWrite];
 
         IdxWrite++;
 
-        if (IdxWrite == BlockLength)
-        {
+        if (IdxWrite == blockLength) {
             IdxWrite = 0;
-            for (int j = 0; j < BlockLength; j++)
-            {
+            for (int j = 0; j < blockLength; j++) {
                 ppfOutputBlockBuffer[BlockIdxRead][j] = 0;
             }
             pforFFT->doFft(pfComplexNum, pfInputBlockBuffer);
             pforFFT->splitRealImag(pfReal_BlockFFTCurrent, pfImage_BlockFFTCurrent, pfComplexNum);
-            for (int j = 0; j < NumofBlock; j++)
-            {
-                for (int i = 0; i <= BlockLength; i++)
-                {
-                    pfReal_FFT[i] = (pfReal_BlockFFTCurrent[i] * ppfReal_IRFreq[j][i] - pfImage_BlockFFTCurrent[i] * ppfImage_IRFreq[j][i]) * 2 * BlockLength;
-                    pfImage_FFT[i] = (pfReal_BlockFFTCurrent[i] * ppfImage_IRFreq[j][i] + pfImage_BlockFFTCurrent[i] * ppfReal_IRFreq[j][i]) * 2 * BlockLength;
+            for (int j = 0; j < NumofBlock; j++) {
+                for (int i = 0; i <= blockLength; i++) {
+                    pfReal_FFT[i] = (pfReal_BlockFFTCurrent[i] * ppfReal_IRFreq[j][i] - pfImage_BlockFFTCurrent[i] * ppfImage_IRFreq[j][i]) * 2 * blockLength;
+                    pfImage_FFT[i] = (pfReal_BlockFFTCurrent[i] * ppfImage_IRFreq[j][i] + pfImage_BlockFFTCurrent[i] * ppfReal_IRFreq[j][i]) * 2 * blockLength;
                 }
                 pforFFT->mergeRealImag(pfComplexNum, pfReal_FFT, pfImage_FFT);
                 pforFFT->doInvFft(pf_IFFT, pfComplexNum);
                 const int l_iWriteBlockNum = (IdxBlock_Write + j) % NumofBlock;
-                for (int k = 0; k < BlockLength; k++)
-                {
-                    ppfOutputBlockBuffer[l_iWriteBlockNum][k] += pf_IFFT[k + BlockLength];
+                for (int k = 0; k < blockLength; k++) {
+                    ppfOutputBlockBuffer[l_iWriteBlockNum][k] += pf_IFFT[k + blockLength];
                 }
             }
-            for (int j = 0; j < BlockLength; j++)
-            {
-                pfInputBlockBuffer[j] = pfInputBlockBuffer[j + BlockLength];
+            for (int j = 0; j < blockLength; j++) {
+                pfInputBlockBuffer[j] = pfInputBlockBuffer[j + blockLength];
             }
 
             BlockIdxRead = IdxBlock_Write;
@@ -128,8 +173,7 @@ void CFastConv::processFreqDomain(float *output, const float *input, int length)
         }
     }
 
-    for (int i = 0; i < NumofBlock; i++)
-    {
+    for (int i = 0; i < NumofBlock; i++) {
         delete[] ppfOutputBlockBuffer[i];
         delete[] ppfReal_IRFreq[i];
         delete[] ppfImage_IRFreq[i];
