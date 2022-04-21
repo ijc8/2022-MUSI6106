@@ -98,23 +98,11 @@ public:
         incIdx(m_iReadIdx, iLength);
     }
 
-    T get(int iOffset = 0) const
-    {
-        if (iOffset == 0)
-            return m_ptBuff[m_iReadIdx];
-        else {
-            while (iOffset < 0)
-                iOffset += m_iBuffLength;
-
-            return m_ptBuff[(m_iReadIdx + iOffset) % m_iBuffLength];
-        }
-    }
-
     /*! return the value at the current read index
     \param fOffset: read at offset from read index
     \return float the value from the read index
     */
-    T get(float fOffset) const
+    T get(float fOffset = 0) const
     {
         if (fOffset == 0)
             return m_ptBuff[m_iReadIdx];
