@@ -36,7 +36,6 @@ int main(int argc, char* argv[]) {
     delayInSec = atof(argv[3]);
     mode = argv[4];
 
-
     // open audio files
     CAudioFileIf::create(phAudioFile);
     CAudioFileIf::create(phAudioOutputFile);
@@ -123,12 +122,5 @@ int main(int argc, char* argv[]) {
     ppfInputAudio = 0;
     ppfOutputAudio = 0;
 
-    // all done
     return 0;
-}
-
-// Somehow, this existing prevents a linker error.
-void nope() {
-    CFft *fft;
-    CFft::destroyInstance(fft);
 }
