@@ -36,14 +36,13 @@ public:
     void process(float *output, const float *input, int length) override;
     int getTailLength() const override;
 private:
-    CFft *fft = nullptr;
-    int blockLength, tailLength, numBlocks;
     // inputBlockHistory contains the spectra of the last few blocks, stored contiguously.
     // It also contains the time-domain samples of the next incoming block.
-    std::vector<float> inputBlockHistory, outputBlock, saved;
+    std::vector<float> impulseResponseBlocks, inputBlockHistory, outputBlock, saved;
+    CFft *fft = nullptr;
+    int blockLength, tailLength, numBlocks;
     int indexInBlock = 0;
     int inputBlockIndex = 0;
-    std::vector<std::vector<float>> impulseResponseBlocks;
 };
 
 /*! \brief interface for fast convolution

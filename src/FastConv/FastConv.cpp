@@ -32,17 +32,17 @@ int TimeConvolution::getTailLength() const {
 
 FreqConvolution::FreqConvolution(const float *impulseResponse, int length, int blockLength)
 : blockLength(blockLength), tailLength(length - 1 + blockLength), numBlocks((int)ceil((float)length / blockLength)),
-  outputBlock(blockLength*2), saved(blockLength), inputBlockHistory(numBlocks*blockLength*2), impulseResponseBlocks(numBlocks) {
+  outputBlock(blockLength*2), saved(blockLength), inputBlockHistory(numBlocks*blockLength*2), impulseResponseBlocks(numBlocks*blockLength*2) {
     CFft::createInstance(fft);
     fft->initInstance(blockLength*2, 1, CFft::kWindowHann, CFft::kNoWindow);
     for (int i = 0; i < numBlocks; i++) {
         int thisBlockLength = std::min(blockLength, length - i * blockLength);
-        impulseResponseBlocks[i].resize(blockLength * 2);
-        memcpy(&impulseResponseBlocks[i][0], &impulseResponse[i * blockLength], sizeof(float) * thisBlockLength);
-        fft->doFft(impulseResponseBlocks[i].data(), impulseResponseBlocks[i].data());
-        // We scale by the FFT length once, here, to avoid doing in repeatedly in `addMultiplySpectra`.
-        CVectorFloat::mulC_I(impulseResponseBlocks[i].data(), blockLength * 2, blockLength * 2);
+        float *impulseResponseBlock = &impulseResponseBlocks[i * blockLength*2];
+        memcpy(impulseResponseBlock, &impulseResponse[i * blockLength], sizeof(float) * thisBlockLength);
+        fft->doFft(impulseResponseBlock, impulseResponseBlock);
     }
+    // We scale by the FFT length once, here, to avoid doing in repeatedly in `addMultiplySpectra`.
+    CVectorFloat::mulC_I(impulseResponseBlocks.data(), blockLength * 2, blockLength * 2);
 }
 
 FreqConvolution::~FreqConvolution() {
@@ -112,15 +112,15 @@ void FreqConvolution::process(float *output, const float *input, int length) {
         // even though in this case we actually want the operation in-place.
         // This is the best we can do without using LaszloFft directly.
         fft->doFft(inputBlock, inputBlock);
-        // Save time-domain residue from last round.
+        // Save time-domain residue from last round & clear output block for accumulation.
         memcpy(&saved[0], &outputBlock[blockLength], sizeof(float) * blockLength);
-        // Sum results from circular convolutions (equivalent to linear convolutions due to zero-padding.)
-        // This is a kind of "higher-level" convolution of blocks.
         std::fill(outputBlock.begin(), outputBlock.end(), 0);
+        // Sum results from circular convolutions (equivalent to linear convolutions due to zero-padding.)
+        // This is a kind of "higher-order" convolution of blocks.
         for (int j = 0; j < numBlocks; j++) {
             int idx = (inputBlockIndex - j + numBlocks) % numBlocks;
             // NOTE: We don't need to re-scale the result here, because we already scaled `impulseResponseBlocks` in the constructor.
-            addMultiplySpectra(outputBlock.data(), impulseResponseBlocks[j].data(), &inputBlockHistory[idx*blockLength*2], blockLength);
+            addMultiplySpectra(outputBlock.data(), &impulseResponseBlocks[j*blockLength*2], &inputBlockHistory[idx*blockLength*2], blockLength);
         }
         // Fourier Transform is linear, so we can just do the IFFT once after summing all the spectra.
         fft->doInvFft(outputBlock.data(), outputBlock.data());
@@ -128,7 +128,7 @@ void FreqConvolution::process(float *output, const float *input, int length) {
         CVectorFloat::add_I(outputBlock.data(), saved.data(), blockLength);
         // Move on to next input block.
         inputBlockIndex = (inputBlockIndex + 1) % numBlocks;
-        // Update indices.
+        // Update index, pointers, and length.
         indexInBlock = 0;
         output += remainingInBlock;
         input += remainingInBlock;
