@@ -1,4 +1,3 @@
-
 #if !defined(__FastConv_HEADER_INCLUDED__)
 #define __FastConv_HEADER_INCLUDED__
 
@@ -11,6 +10,8 @@
 #include "ErrorDef.h"
 #include "Fft.h"
 
+// Abstract base class. Allows polymorphism in CFastConv class,
+// which wraps both convolution methods (time-domain & frequency-domain).
 class Convolution {
 public:
     virtual ~Convolution() {};
@@ -47,11 +48,9 @@ private:
 
 /*! \brief interface for fast convolution
 */
-class CFastConv
-{
+class CFastConv {
 public:
-    enum ConvCompMode_t
-    {
+    enum ConvCompMode_t {
         kTimeDomain,
         kFreqDomain,
 
