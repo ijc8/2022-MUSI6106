@@ -42,7 +42,7 @@ FreqConvolution::FreqConvolution(const float *impulseResponse, int length, int b
         fft->doFft(impulseResponseBlock, impulseResponseBlock);
     }
     // We scale by the FFT length once, here, to avoid doing in repeatedly in `addMultiplySpectra`.
-    CVectorFloat::mulC_I(impulseResponseBlocks.data(), blockLength * 2, blockLength * 2);
+    CVectorFloat::mulC_I(impulseResponseBlocks.data(), blockLength * 2, impulseResponseBlocks.size());
 }
 
 FreqConvolution::~FreqConvolution() {
