@@ -6,6 +6,7 @@
 #include "Fft.h"
 #include "Vector.h"
 
+
 TimeConvolution::TimeConvolution(const float *impulseResponse, int length)
 : impulseResponse(impulseResponse, &impulseResponse[length]), history(length) {
 }
@@ -27,6 +28,7 @@ int TimeConvolution::getTailLength() const {
     // even if the user has provided fewer than `impulseResponse.size()` input samples.
     return impulseResponse.size() - 1;
 }
+
 
 FreqConvolution::FreqConvolution(const float *impulseResponse, int length, int blockLength)
 : blockLength(blockLength), tailLength(length - 1 + blockLength), numBlocks((int)ceil((float)length / blockLength)),
@@ -94,35 +96,51 @@ static inline void addMultiplySpectra(float *output, const float *spectrumA, con
 }
 
 void FreqConvolution::process(float *output, const float *input, int length) {
-    for (int i = 0; i < length; i++) {
-        output[i] = outputBlock[indexInBlock];
-        inputBlockHistory[inputBlockIndex*blockLength*2 + indexInBlock++] = input[i];
-        if (indexInBlock == blockLength) {
-            // We have another full input block for processing.
-            // Take the FFT in-place.
-            float *inputBlock = &inputBlockHistory[inputBlockIndex*blockLength*2];
-            std::fill(&inputBlock[blockLength], &inputBlock[blockLength*2], 0);
-            // NOTE: Unfortunately CFft adds some overhead here from copying buffers around,
-            // even though in this case we actually want the operation in-place.
-            // This is the best we can do without using LaszloFft directly.
-            fft->doFft(inputBlock, inputBlock);
-            // Save time-domain residue from last round.
-            memcpy(&saved[0], &outputBlock[blockLength], sizeof(float) * blockLength);
-            // Sum results from circular convolutions (equivalent to linear convolutions due to zero-padding.)
-            // This is a kind of "higher-level" convolution of blocks.
-            std::fill(outputBlock.begin(), outputBlock.end(), 0);
-            for (int j = 0; j < numBlocks; j++) {
-                int idx = (inputBlockIndex - j + numBlocks) % numBlocks;
-                // NOTE: We don't need to re-scale the result here, because we already scaled `impulseResponseBlocks` in the constructor.
-                addMultiplySpectra(outputBlock.data(), impulseResponseBlocks[j].data(), &inputBlockHistory[idx*blockLength*2], blockLength);
-            }
-            // Fourier Transform is linear, so we can just do the IFFT once after summing all the spectra.
-            fft->doInvFft(outputBlock.data(), outputBlock.data());
-            // Add back the residue from last time.
-            CVectorFloat::add_I(outputBlock.data(), saved.data(), blockLength);
-            inputBlockIndex = (inputBlockIndex + 1) % numBlocks;
-            indexInBlock = 0;
+    int remainingInBlock;
+    // Fill and process as many complete blocks as we can.
+    while ((remainingInBlock = blockLength - indexInBlock) <= length) {
+        // Fill up the rest of the next input block.
+        memcpy(&inputBlockHistory[inputBlockIndex*blockLength*2 + indexInBlock], input, sizeof(float) * remainingInBlock);
+        // Read out the rest of the last output block.
+        memcpy(output, &outputBlock[indexInBlock], sizeof(float) * remainingInBlock);
+
+        // We have another full input block for processing.
+        // Take the FFT in-place.
+        float *inputBlock = &inputBlockHistory[inputBlockIndex*blockLength*2];
+        std::fill(&inputBlock[blockLength], &inputBlock[blockLength*2], 0);
+        // NOTE: Unfortunately CFft adds some overhead here from copying buffers around,
+        // even though in this case we actually want the operation in-place.
+        // This is the best we can do without using LaszloFft directly.
+        fft->doFft(inputBlock, inputBlock);
+        // Save time-domain residue from last round.
+        memcpy(&saved[0], &outputBlock[blockLength], sizeof(float) * blockLength);
+        // Sum results from circular convolutions (equivalent to linear convolutions due to zero-padding.)
+        // This is a kind of "higher-level" convolution of blocks.
+        std::fill(outputBlock.begin(), outputBlock.end(), 0);
+        for (int j = 0; j < numBlocks; j++) {
+            int idx = (inputBlockIndex - j + numBlocks) % numBlocks;
+            // NOTE: We don't need to re-scale the result here, because we already scaled `impulseResponseBlocks` in the constructor.
+            addMultiplySpectra(outputBlock.data(), impulseResponseBlocks[j].data(), &inputBlockHistory[idx*blockLength*2], blockLength);
         }
+        // Fourier Transform is linear, so we can just do the IFFT once after summing all the spectra.
+        fft->doInvFft(outputBlock.data(), outputBlock.data());
+        // Add back the residue from last time.
+        CVectorFloat::add_I(outputBlock.data(), saved.data(), blockLength);
+        // Move on to next input block.
+        inputBlockIndex = (inputBlockIndex + 1) % numBlocks;
+        // Update indices.
+        indexInBlock = 0;
+        output += remainingInBlock;
+        input += remainingInBlock;
+        length -= remainingInBlock;
+    }
+    // No more full blocks. Check if there are any leftover samples for the next block.
+    if (length > 0) {
+        // Append samples to the next input block.
+        memcpy(&inputBlockHistory[inputBlockIndex*blockLength*2 + indexInBlock], input, sizeof(float) * length);
+        // Read out the same number of samples from the last output block.
+        memcpy(output, &outputBlock[indexInBlock], sizeof(float) * length);
+        indexInBlock += length;
     }
 }
 
@@ -131,6 +149,7 @@ int FreqConvolution::getTailLength() const {
     // the block size due to latency (initial output of zeros).
     return tailLength;
 }
+
 
 CFastConv::CFastConv() {
 }
