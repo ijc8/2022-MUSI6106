@@ -7,16 +7,6 @@
 #include "AudioFileIf.h"
 #include "FastConv.h"
 
-using std::cout;
-using std::endl;
-
-// Somehow, this existing prevents a linker error.
-void nope() {
-    CFft *fft;
-    CFft::createInstance(fft);
-    CFft::destroyInstance(fft);
-}
-
 int main(int argc, char* argv[]) {
     std::string sInputFilePath, sOutputFilePath, mode;
     float delayInSec;
@@ -38,7 +28,7 @@ int main(int argc, char* argv[]) {
 
     // command line args
     if (argc < 5) {
-        cout << "Usage: " << argv[0] << " <input file> <output file> <delay in seconds> <time|freq>" << endl;
+        std::cout << "Usage: " << argv[0] << " <input file> <output file> <delay in seconds> <time|freq>" << std::endl;
         return -1;
     }
     sInputFilePath = argv[1];
@@ -56,17 +46,17 @@ int main(int argc, char* argv[]) {
     phAudioOutputFile->openFile(sOutputFilePath, CAudioFileIf::kFileWrite, &stFileSpec);
     iNumChannels = stFileSpec.iNumChannels;
     if (!phAudioFile->isOpen()) {
-        cout << "Input file open error!";
+        std::cout << "Input file open error!";
         CAudioFileIf::destroy(phAudioFile);
         CAudioFileIf::destroy(phAudioOutputFile);
         return -1;
     } else if (!phAudioOutputFile->isOpen()) {
-        cout << "Output file cannot be initialized!" << endl;
+        std::cout << "Output file cannot be initialized!" << std::endl;
         CAudioFileIf::destroy(phAudioFile);
         CAudioFileIf::destroy(phAudioOutputFile);
         return -1;
     } else if (iNumChannels != 1) {
-        cout << "Only mono audio is supported." << endl;
+        std::cout << "Only mono audio is supported." << std::endl;
         CAudioFileIf::destroy(phAudioFile);
         CAudioFileIf::destroy(phAudioOutputFile);
         return -1;
@@ -117,8 +107,8 @@ int main(int argc, char* argv[]) {
     float *wrapper[] = { tail };
     phAudioOutputFile->writeData(wrapper, tailLength);
 
-    cout << "reading/writing done in: \t" << (float)(clock() - time) / CLOCKS_PER_SEC << " seconds." << endl;
-    cout << "time in process/flushBuffer: \t" << ((float)processingTime / CLOCKS_PER_SEC) << " seconds." << endl;
+    std::cout << "reading/writing done in: \t" << (float)(clock() - time) / CLOCKS_PER_SEC << " seconds." << std::endl;
+    std::cout << "time in process/flushBuffer: \t" << ((float)processingTime / CLOCKS_PER_SEC) << " seconds." << std::endl;
 
     // clean-up
     CAudioFileIf::destroy(phAudioFile);
@@ -135,4 +125,10 @@ int main(int argc, char* argv[]) {
 
     // all done
     return 0;
+}
+
+// Somehow, this existing prevents a linker error.
+void nope() {
+    CFft *fft;
+    CFft::destroyInstance(fft);
 }

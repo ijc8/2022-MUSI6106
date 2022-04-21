@@ -32,13 +32,13 @@ int TimeConvolution::getTailLength() const {
 
 FreqConvolution::FreqConvolution(const float *impulseResponse, int length, int blockLength)
 : blockLength(blockLength), tailLength(length - 1 + blockLength), numBlocks((int)ceil((float)length / blockLength)),
-  outputBlock(blockLength*2), saved(blockLength), inputBlockHistory(numBlocks*blockLength*2), impulseResponseBlocks(numBlocks*blockLength*2) {
+  outputBlock(blockLength*2), saved(blockLength), inputBlocks(numBlocks*blockLength*2), impulseResponseBlocks(numBlocks*blockLength*2) {
     CFft::createInstance(fft);
     fft->initInstance(blockLength*2, 1, CFft::kWindowHann, CFft::kNoWindow);
     for (int i = 0; i < numBlocks; i++) {
         int thisBlockLength = std::min(blockLength, length - i * blockLength);
         float *impulseResponseBlock = &impulseResponseBlocks[i * blockLength*2];
-        memcpy(impulseResponseBlock, &impulseResponse[i * blockLength], sizeof(float) * thisBlockLength);
+        std::copy_n(&impulseResponse[i * blockLength], thisBlockLength, impulseResponseBlock);
         fft->doFft(impulseResponseBlock, impulseResponseBlock);
     }
     // We scale by the FFT length once, here, to avoid doing in repeatedly in `addMultiplySpectra`.
@@ -100,27 +100,27 @@ void FreqConvolution::process(float *output, const float *input, int length) {
     // Fill and process as many complete blocks as we can.
     while ((remainingInBlock = blockLength - indexInBlock) <= length) {
         // Fill up the rest of the next input block.
-        memcpy(&inputBlockHistory[inputBlockIndex*blockLength*2 + indexInBlock], input, sizeof(float) * remainingInBlock);
+        std::copy_n(input, remainingInBlock, &inputBlocks[inputBlockIndex*blockLength*2 + indexInBlock]);
         // Read out the rest of the last output block.
-        memcpy(output, &outputBlock[indexInBlock], sizeof(float) * remainingInBlock);
+        std::copy_n(&outputBlock[indexInBlock], remainingInBlock, output);
 
         // We have another full input block for processing.
         // Take the FFT in-place.
-        float *inputBlock = &inputBlockHistory[inputBlockIndex*blockLength*2];
+        float *inputBlock = &inputBlocks[inputBlockIndex*blockLength*2];
         std::fill(&inputBlock[blockLength], &inputBlock[blockLength*2], 0);
         // NOTE: Unfortunately CFft adds some overhead here from copying buffers around,
         // even though in this case we actually want the operation in-place.
         // This is the best we can do without using LaszloFft directly.
         fft->doFft(inputBlock, inputBlock);
         // Save time-domain residue from last round & clear output block for accumulation.
-        memcpy(&saved[0], &outputBlock[blockLength], sizeof(float) * blockLength);
+        std::copy_n(outputBlock.begin() + blockLength, blockLength, saved.begin());
         std::fill(outputBlock.begin(), outputBlock.end(), 0);
         // Sum results from circular convolutions (equivalent to linear convolutions due to zero-padding.)
         // This is a kind of "higher-order" convolution of blocks.
         for (int j = 0; j < numBlocks; j++) {
             int idx = (inputBlockIndex - j + numBlocks) % numBlocks;
             // NOTE: We don't need to re-scale the result here, because we already scaled `impulseResponseBlocks` in the constructor.
-            addMultiplySpectra(outputBlock.data(), &impulseResponseBlocks[j*blockLength*2], &inputBlockHistory[idx*blockLength*2], blockLength);
+            addMultiplySpectra(outputBlock.data(), &impulseResponseBlocks[j*blockLength*2], &inputBlocks[idx*blockLength*2], blockLength);
         }
         // Fourier Transform is linear, so we can just do the IFFT once after summing all the spectra.
         fft->doInvFft(outputBlock.data(), outputBlock.data());
@@ -137,9 +137,9 @@ void FreqConvolution::process(float *output, const float *input, int length) {
     // No more full blocks. Check if there are any leftover samples for the next block.
     if (length > 0) {
         // Append samples to the next input block.
-        memcpy(&inputBlockHistory[inputBlockIndex*blockLength*2 + indexInBlock], input, sizeof(float) * length);
+        std::copy_n(input, length, &inputBlocks[inputBlockIndex*blockLength*2 + indexInBlock]);
         // Read out the same number of samples from the last output block.
-        memcpy(output, &outputBlock[indexInBlock], sizeof(float) * length);
+        std::copy_n(&outputBlock[indexInBlock], length, output);
         indexInBlock += length;
     }
 }

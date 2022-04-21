@@ -42,9 +42,9 @@ private:
     // NOTE: Construction order matters;
     // vectors depend on these getting initialized first in the initialization list.
     int blockLength, tailLength, numBlocks;
-    // inputBlockHistory contains the spectra of the last few blocks, stored contiguously.
+    // `inputBlocks` contains the spectra of the last few blocks, stored contiguously.
     // It also contains the time-domain samples of the next incoming block.
-    std::vector<float> inputBlockHistory, outputBlock, saved, impulseResponseBlocks;
+    std::vector<float> inputBlocks, outputBlock, saved, impulseResponseBlocks;
 };
 
 /*! \brief interface for fast convolution
