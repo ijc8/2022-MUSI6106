@@ -170,7 +170,7 @@ Error_t CFastConv::init(float *pfImpulseResponse, int iLengthOfIr, int iBlockLen
 }
 
 Error_t CFastConv::reset() {
-    conv.release();
+    conv.reset();
     return Error_t::kNoError;
 }
 
