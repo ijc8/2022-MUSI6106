@@ -31,7 +31,7 @@ namespace fastconv_test {
     };
 
     TEST_F(FastConv, Identity) {
-        int irLength = 51;
+        const int irLength = 51;
         float impulseResponse[irLength];
         // Generate random impulse response (samples from -1 to 1).
         for (int i = 0; i < irLength; i++) {
@@ -39,7 +39,7 @@ namespace fastconv_test {
         }
 
         fastConv->init(impulseResponse, irLength, 0, CFastConv::kTimeDomain);
-        int inputLength = 10;
+        const int inputLength = 10;
         int shift = 3;
         float input[inputLength] = {0};
         input[shift] = 1;
@@ -51,7 +51,7 @@ namespace fastconv_test {
     }
 
     TEST_F(FastConv, FlushBuffer) {
-        int irLength = 51;
+        const int irLength = 51;
         float impulseResponse[irLength];
         // Generate random impulse response (samples from -1 to 1).
         for (int i = 0; i < irLength; i++) {
@@ -59,7 +59,7 @@ namespace fastconv_test {
         }
 
         fastConv->init(impulseResponse, irLength, 0, CFastConv::kTimeDomain);
-        int inputLength = 10;
+        const int inputLength = 10;
         int shift = 3;
         float input[inputLength] = {0};
         input[shift] = 1;
@@ -68,8 +68,8 @@ namespace fastconv_test {
 
         // Check tail correctness.
         int tailLength = fastConv->getTailLength();
-        float tail[tailLength];
-        fastConv->flushBuffer(tail);
+        std::vector<float> tail(tailLength);
+        fastConv->flushBuffer(tail.data());
         for (int i = 0; i < tailLength; i++) {
             int index = i + inputLength - shift;
             EXPECT_EQ(tail[i], index < irLength ? impulseResponse[index] : 0);
@@ -77,12 +77,12 @@ namespace fastconv_test {
     }
 
     TEST_F(FastConv, BlockSize) {
-        int irLength = 10;
+        const int irLength = 10;
         float impulseResponse[irLength] = {0};
         int shift = 3;
         impulseResponse[shift] = 1;
 
-        int inputLength = 10000;
+        const int inputLength = 10000;
         float input[inputLength];
         // Generate random input signal (samples from -1 to 1).
         for (int i = 0; i < inputLength; i++) {
@@ -105,7 +105,7 @@ namespace fastconv_test {
     }
 
     TEST_F(FastConv, IdentityFreq) {
-        int irLength = 51;
+        const int irLength = 51;
         float impulseResponse[irLength];
         // Generate random impulse response (samples from -1 to 1).
         for (int i = 0; i < irLength; i++) {
@@ -114,7 +114,7 @@ namespace fastconv_test {
 
         int blockLength = 4;
         fastConv->init(impulseResponse, irLength, blockLength, CFastConv::kFreqDomain);
-        int inputLength = 10;
+        const int inputLength = 10;
         int shift = 3;
         float input[inputLength] = {0};
         input[shift] = 1;
@@ -126,7 +126,7 @@ namespace fastconv_test {
     }
 
     TEST_F(FastConv, FlushBufferFreq) {
-        int irLength = 51;
+        const int irLength = 51;
         float impulseResponse[irLength];
         // Generate random impulse response (samples from -1 to 1).
         for (int i = 0; i < irLength; i++) {
@@ -135,7 +135,7 @@ namespace fastconv_test {
 
         int blockLength = 8;
         fastConv->init(impulseResponse, irLength, blockLength, CFastConv::kFreqDomain);
-        int inputLength = 10;
+        const int inputLength = 10;
         int shift = 3;
         float input[inputLength] = {0};
         input[shift] = 1;
@@ -144,8 +144,8 @@ namespace fastconv_test {
 
         // Check tail correctness.
         int tailLength = fastConv->getTailLength();
-        float tail[tailLength];
-        fastConv->flushBuffer(tail);
+        std::vector<float> tail(tailLength);
+        fastConv->flushBuffer(tail.data());
         for (int i = 0; i < tailLength; i++) {
             int index = i + inputLength - (shift + blockLength);
             EXPECT_NEAR(tail[i], index >= 0 && index < irLength ? impulseResponse[index] : 0, epsilon);
@@ -153,12 +153,12 @@ namespace fastconv_test {
     }
 
     TEST_F(FastConv, BlockSizeFreq) {
-        int irLength = 10;
+        const int irLength = 10;
         float impulseResponse[irLength] = {0};
         int shift = 3;
         impulseResponse[shift] = 1;
 
-        int inputLength = 10000;
+        const int inputLength = 10000;
         float input[inputLength];
         // Generate random input signal (samples from -1 to 1).
         for (int i = 0; i < inputLength; i++) {
@@ -183,14 +183,14 @@ namespace fastconv_test {
 
     // Extra test: confirm that time and frequency domain results are (nearly) equal.
     TEST_F(FastConv, Consistent) {
-        int irLength = 51;
+        const int irLength = 51;
         float impulseResponse[irLength];
         // Generate random impulse response (samples from -1 to 1).
         for (int i = 0; i < irLength; i++) {
             impulseResponse[i] = (float)rand() / RAND_MAX * 2 - 1;
         }
 
-        int inputLength = 10000;
+        const int inputLength = 10000;
         float input[inputLength];
         // Generate random input signal (samples from -1 to 1).
         for (int i = 0; i < inputLength; i++) {
