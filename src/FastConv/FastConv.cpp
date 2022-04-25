@@ -34,7 +34,15 @@ FreqConvolution::FreqConvolution(const float *impulseResponse, int length, int b
 : blockLength(blockLength), tailLength(length - 1 + blockLength), numBlocks((int)ceil((float)length / blockLength)),
   outputBlock(blockLength*2), saved(blockLength), inputBlocks(numBlocks*blockLength*2), impulseResponseBlocks(numBlocks*blockLength*2) {
     CFft::createInstance(fft);
-    fft->initInstance(blockLength*2, 1, CFft::kWindowHann, CFft::kNoWindow);
+    Error_t err = fft->initInstance(blockLength*2, 1, CFft::kWindowHann, CFft::kNoWindow);
+    // If there's an error, propagate it as an exception.
+    if (err != Error_t::kNoError) {
+        // Destructor won't get called, because constructor didn't complete!
+        // (Alas, this would be unnecessary if `CFft` had a useful destructor.)
+        fft->resetInstance();
+        CFft::destroyInstance(fft);
+        throw err;
+    }
     for (int i = 0; i < numBlocks; i++) {
         int thisBlockLength = std::min(blockLength, length - i * blockLength);
         float *impulseResponseBlock = &impulseResponseBlocks[i * blockLength*2];
@@ -46,6 +54,9 @@ FreqConvolution::FreqConvolution(const float *impulseResponse, int length, int b
 }
 
 FreqConvolution::~FreqConvolution() {
+    // `CFft::destroyInstance` apparently doesn't free the allocated buffers,
+    // so we call `resetInstance` first.
+    fft->resetInstance();
     CFft::destroyInstance(fft);
 }
 
@@ -159,12 +170,16 @@ CFastConv::~CFastConv() {
 }
 
 Error_t CFastConv::init(float *pfImpulseResponse, int iLengthOfIr, int iBlockLength /*= 8192*/, ConvCompMode_t eCompMode /*= kFreqDomain*/) {
-    if (eCompMode == kTimeDomain) {
-        conv = std::make_unique<TimeConvolution>(pfImpulseResponse, iLengthOfIr);
-    } else if (eCompMode == kFreqDomain) {
-        conv = std::make_unique<FreqConvolution>(pfImpulseResponse, iLengthOfIr, iBlockLength);
-    } else {
-        return Error_t::kFunctionInvalidArgsError;
+    try {
+        if (eCompMode == kTimeDomain) {
+            conv = std::make_unique<TimeConvolution>(pfImpulseResponse, iLengthOfIr);
+        } else if (eCompMode == kFreqDomain) {
+            conv = std::make_unique<FreqConvolution>(pfImpulseResponse, iLengthOfIr, iBlockLength);
+        } else {
+            return Error_t::kFunctionInvalidArgsError;
+        }
+    } catch (const Error_t &err) {
+        return err;
     }
     return Error_t::kNoError;
 }

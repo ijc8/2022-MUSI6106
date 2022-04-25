@@ -216,6 +216,22 @@ namespace fastconv_test {
             EXPECT_NEAR(freqOutput[i], i < blockLength ? 0 : timeOutput[i - blockLength], epsilon);
         }
     }
+
+    // Extra test: check error conditions.
+    TEST_F(FastConv, Errors) {
+        const int irLength = 10;
+        float ir[irLength] = {0};
+        EXPECT_EQ(fastConv->init(ir, irLength), Error_t::kNoError);
+        EXPECT_EQ(fastConv->reset(), Error_t::kNoError);
+        // Try non-power-of-2 FFT size.
+        EXPECT_EQ(fastConv->init(ir, irLength, 13), Error_t::kFunctionInvalidArgsError);
+        // Try invalid convolution type.
+        EXPECT_EQ(fastConv->init(ir, irLength, 2048, CFastConv::kNumConvCompModes), Error_t::kFunctionInvalidArgsError);
+        // Try performing operations without initialization.
+        float input[1], output[1];
+        EXPECT_EQ(fastConv->process(output, input, 1), Error_t::kNotInitializedError);
+        EXPECT_EQ(fastConv->flushBuffer(output), Error_t::kNotInitializedError);
+    }
 }
 
 #endif //WITH_TESTS
