@@ -31,8 +31,9 @@ int TimeConvolution::getTailLength() const {
 
 
 FreqConvolution::FreqConvolution(const float *impulseResponse, int length, int blockLength)
-: blockLength(blockLength), tailLength(length - 1 + blockLength), numBlocks((int)ceil((float)length / blockLength)),
-  outputBlock(blockLength*2), saved(blockLength), inputBlocks(numBlocks*blockLength*2), impulseResponseBlocks(numBlocks*blockLength*2) {
+: blockLength(blockLength <= 0 ? throw Error_t::kFunctionInvalidArgsError : blockLength),
+  tailLength(length - 1 + blockLength), numBlocks((int)ceil((float)length / blockLength)), outputBlock(blockLength*2),
+  saved(blockLength), inputBlocks(numBlocks*blockLength*2), impulseResponseBlocks(numBlocks*blockLength*2) {
     CFft::createInstance(fft);
     Error_t err = fft->initInstance(blockLength*2, 1, CFft::kWindowHann, CFft::kNoWindow);
     // If there's an error, propagate it as an exception.
@@ -170,6 +171,9 @@ CFastConv::~CFastConv() {
 }
 
 Error_t CFastConv::init(float *pfImpulseResponse, int iLengthOfIr, int iBlockLength /*= 8192*/, ConvCompMode_t eCompMode /*= kFreqDomain*/) {
+    if (pfImpulseResponse == nullptr || iLengthOfIr <= 0) {
+        return Error_t::kFunctionInvalidArgsError;
+    }
     try {
         if (eCompMode == kTimeDomain) {
             conv = std::make_unique<TimeConvolution>(pfImpulseResponse, iLengthOfIr);

@@ -231,7 +231,12 @@ namespace fastconv_test {
         float input[1], output[1];
         EXPECT_EQ(fastConv->process(output, input, 1), Error_t::kNotInitializedError);
         EXPECT_EQ(fastConv->flushBuffer(output), Error_t::kNotInitializedError);
+        // Even more error conditions from class tests:
+        EXPECT_EQ(fastConv->init(0, 1), Error_t::kFunctionInvalidArgsError);
+        EXPECT_EQ(fastConv->init(ir, 0), Error_t::kFunctionInvalidArgsError);
+        EXPECT_EQ(fastConv->init(ir, irLength, -1), Error_t::kFunctionInvalidArgsError);
     }
+
 }
 
 #endif //WITH_TESTS
