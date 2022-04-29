@@ -17,5 +17,4 @@ add_inc_directories ()
 add_executable(${APP} ${${APP}_SOURCES} ${${APP}_HEADERS})
 
 # link the libraries
-target_link_libraries(${APP} ${LIB} ${AudioLIB} ${FftLIB} ${FastConvLIB} ${VibratoLIB} ${CombFilterLIB} ${SndLIB} ${OS_LIBS})
-
+target_link_libraries(${APP} ${LIB} ${AudioLIB} ${FastConvLIB} ${FftLIB} ${VibratoLIB} ${CombFilterLIB} ${SndLIB} ${OS_LIBS})
